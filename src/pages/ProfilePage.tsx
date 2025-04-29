@@ -1,12 +1,12 @@
-import { useEffect, useState } from 'react';
-import { useParams, Link } from 'react-router-dom';
-import { ExternalLink, ArrowRight } from 'lucide-react';
-import { motion } from 'framer-motion';
-import { supabase } from '../lib/supabaseClient';
-import { UserProfile } from '../stores/userStore';
-import { Link as LinkType } from '../stores/linkStore';
-import Logo from '../components/common/Logo';
-import Button from '../components/common/Button';
+import { useEffect, useState } from "react";
+import { useParams, Link } from "react-router-dom";
+import { ExternalLink, ArrowRight } from "lucide-react";
+import { motion } from "framer-motion";
+import { supabase } from "../lib/supabaseClient";
+import { UserProfile } from "../stores/userStore";
+import { Link as LinkType } from "../stores/linkStore";
+import Logo from "../components/common/Logo";
+import Button from "../components/common/Button";
 
 export default function ProfilePage() {
   const { username } = useParams<{ username: string }>();
@@ -14,59 +14,59 @@ export default function ProfilePage() {
   const [links, setLinks] = useState<LinkType[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  
+
   useEffect(() => {
     const fetchProfile = async () => {
       try {
         setIsLoading(true);
         setError(null);
-        
+
         if (!username) {
-          setError('Username not provided');
+          setError("Username not provided");
           return;
         }
-        
+
         // Fetch profile
         const { data: profileData, error: profileError } = await supabase
-          .from('profiles')
-          .select('*')
-          .eq('username', username)
+          .from("profiles")
+          .select("*")
+          .eq("username", username)
           .single();
-        
+
         if (profileError) throw profileError;
-        
+
         if (!profileData) {
-          setError('Profile not found');
+          setError("Profile not found");
           return;
         }
-        
+
         setProfile(profileData);
-        
+
         // Fetch links
         const { data: linksData, error: linksError } = await supabase
-          .from('links')
-          .select('*')
-          .eq('user_id', profileData.id)
-          .eq('is_active', true)
-          .order('order', { ascending: true });
-        
+          .from("links")
+          .select("*")
+          .eq("user_id", profileData.id)
+          .eq("is_active", true)
+          .order("order", { ascending: true });
+
         if (linksError) throw linksError;
-        
+
         setLinks(linksData || []);
       } catch (err) {
-        console.error('Error fetching profile:', err);
-        setError('Failed to load profile');
+        console.error("Error fetching profile:", err);
+        setError("Failed to load profile");
       } finally {
         setIsLoading(false);
       }
     };
-    
+
     fetchProfile();
   }, [username]);
-  
+
   const trackClick = async (linkId: string) => {
     try {
-      await supabase.from('link_clicks').insert([
+      await supabase.from("link_clicks").insert([
         {
           link_id: linkId,
           user_agent: navigator.userAgent,
@@ -74,18 +74,20 @@ export default function ProfilePage() {
         },
       ]);
     } catch (error) {
-      console.error('Error tracking click:', error);
+      console.error("Error tracking click:", error);
     }
   };
-  
+
   if (isLoading) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-gray-50 dark:bg-gray-900">
-        <div className="animate-pulse text-gray-500 dark:text-gray-400">Loading profile...</div>
+        <div className="animate-pulse text-gray-500 dark:text-gray-400">
+          Loading profile...
+        </div>
       </div>
     );
   }
-  
+
   if (error || !profile) {
     return (
       <div className="min-h-screen flex flex-col items-center justify-center bg-gray-50 dark:bg-gray-900 p-4 text-center">
@@ -102,7 +104,7 @@ export default function ProfilePage() {
       </div>
     );
   }
-  
+
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-gray-900 flex flex-col">
       <header className="p-4 flex justify-between items-center">
@@ -113,7 +115,7 @@ export default function ProfilePage() {
           </Button>
         </Link>
       </header>
-      
+
       <main className="flex-1 flex flex-col items-center max-w-md mx-auto w-full px-4 py-8">
         <motion.div
           initial={{ opacity: 0, y: 20 }}
@@ -129,7 +131,7 @@ export default function ProfilePage() {
             <p className="text-gray-600 dark:text-gray-400">{profile.bio}</p>
           )}
         </motion.div>
-        
+
         <div className="w-full space-y-4">
           {links.length > 0 ? (
             links.map((link, index) => (
@@ -154,14 +156,16 @@ export default function ProfilePage() {
             ))
           ) : (
             <div className="text-center py-8">
-              <p className="text-gray-500 dark:text-gray-400">No links available yet.</p>
+              <p className="text-gray-500 dark:text-gray-400">
+                No links available yet.
+              </p>
             </div>
           )}
         </div>
       </main>
-      
+
       <footer className="py-6 text-center text-sm text-gray-500 dark:text-gray-400">
-        Powered by <span className="font-medium">Linko</span>
+        Powered by <span className="font-medium">NestBio - Linko</span>
       </footer>
     </div>
   );
