@@ -41,7 +41,7 @@ export default function ProfileImageUpload({
       const filePath = `profile-images/${fileName}`;
 
       const { error: uploadError, data } = await supabase.storage
-        .from("public")
+        .from("avatars")
         .upload(filePath, file);
 
       if (uploadError) throw uploadError;
@@ -49,12 +49,12 @@ export default function ProfileImageUpload({
       // Get public URL
       const {
         data: { publicUrl },
-      } = supabase.storage.from("public").getPublicUrl(filePath);
+      } = supabase.storage.from("avatars").getPublicUrl(filePath);
 
       onUpload(publicUrl);
     } catch (error) {
       console.error("Error uploading image:", error);
-      setError("Failed to upload image");
+      setError("Failed to upload image. Please try again.");
     } finally {
       setIsUploading(false);
     }
@@ -69,7 +69,7 @@ export default function ProfileImageUpload({
       if (!filePath) return;
 
       await supabase.storage
-        .from("public")
+        .from("avatars")
         .remove([`profile-images/${filePath}`]);
 
       onUpload("");

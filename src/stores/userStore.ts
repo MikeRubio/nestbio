@@ -12,6 +12,7 @@ interface UserState {
   setUser: (user: User | null) => void;
   setProfile: (profile: UserProfile | null) => void;
   fetchProfile: () => Promise<void>;
+  updateProfile: (updates: Partial<UserProfile>) => Promise<void>;
   logout: () => Promise<void>;
   setLoading: (isLoading: boolean) => void;
 }
@@ -22,7 +23,9 @@ export interface UserProfile {
   title: string;
   bio: string;
   avatar_url: string;
+  profile_image_url: string | null;
   theme: string;
+  template_id: string;
   is_private: boolean;
   created_at: string;
   updated_at: string;
@@ -54,6 +57,7 @@ export const useUserStore = create<UserState>((set, get) => ({
         .select('*')
         .eq('id', user.id)
         .limit(1).maybeSingle()
+
       
       if (error) throw error;
       
@@ -61,6 +65,33 @@ export const useUserStore = create<UserState>((set, get) => ({
     } catch (error) {
       console.error('Error fetching profile:', error);
       set({ error: (error as Error).message, isLoading: false });
+    }
+  },
+  
+  updateProfile: async (updates) => {
+    const { user } = get();
+    
+    if (!user) {
+      throw new Error('No user logged in');
+    }
+    
+    try {
+      set({ isLoading: true, error: null });
+      
+      const { data, error } = await supabase
+        .from('profiles')
+        .update(updates)
+        .eq('id', user.id)
+        .select()
+        .single();
+      
+      if (error) throw error;
+      
+      set({ profile: data, isLoading: false });
+    } catch (error) {
+      console.error('Error updating profile:', error);
+      set({ error: (error as Error).message, isLoading: false });
+      throw error;
     }
   },
   

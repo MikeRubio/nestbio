@@ -1,5 +1,5 @@
 import { Link } from "react-router-dom";
-import { Link as LinkIcon } from "lucide-react";
+import { Palmtree as PalmTree } from "lucide-react";
 
 interface LogoProps {
   variant?: "default" | "light" | "dark";
@@ -26,12 +26,14 @@ export default function Logo({ variant = "default", size = "md" }: LogoProps) {
   };
 
   return (
-    <Link to="/" className="flex items-center gap-2 font-semibold">
-      <span className="bg-gradient-to-r from-primary-500 to-secondary-500 p-1.5 rounded-lg text-white">
-        <LinkIcon size={iconSizes[size]} strokeWidth={2.5} />
+    <Link to="/" className="flex items-center gap-2">
+      <span className="bg-gradient-to-r from-primary-400 to-secondary-400 p-1.5 rounded-lg text-white">
+        <PalmTree size={iconSizes[size]} strokeWidth={2.5} />
       </span>
-      <span className={`${sizeClasses[size]} ${variantClasses[variant]}`}>
-        NestBio
+      <span
+        className={`${sizeClasses[size]} ${variantClasses[variant]} font-display`}
+      >
+        Nestbio
       </span>
     </Link>
   );
