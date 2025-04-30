@@ -24,7 +24,7 @@ export default function LoginPage() {
 
       if (error) throw error;
 
-      navigate("/");
+      navigate("/dashboard");
     } catch (error) {
       console.error("Error logging in:", error);
       setError((error as Error).message);

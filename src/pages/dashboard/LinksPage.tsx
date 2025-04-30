@@ -12,6 +12,9 @@ export default function LinksPage() {
     title: "",
     url: "",
     is_active: true,
+    link_type: "custom" as Link["link_type"],
+    is_adult_content: false,
+    share_count: 0,
   });
   const [editingLink, setEditingLink] = useState<Link | null>(null);
   const [showForm, setShowForm] = useState(false);
@@ -52,7 +55,14 @@ export default function LinksPage() {
     };
 
     await createLink(linkData);
-    setNewLink({ title: "", url: "", is_active: true });
+    setNewLink({
+      title: "",
+      url: "",
+      is_active: true,
+      link_type: "custom" as Link["link_type"],
+      is_adult_content: false,
+      share_count: 0,
+    });
     setShowForm(false);
   };
 
@@ -61,9 +71,7 @@ export default function LinksPage() {
 
     if (changes.url) {
       try {
-        // Basic URL validation
         new URL(changes.url as string);
-        // eslint-disable-next-line @typescript-eslint/no-unused-vars
       } catch (e) {
         setValidationError(
           "Please enter a valid URL (include http:// or https://)"
@@ -109,6 +117,41 @@ export default function LinksPage() {
             exit={{ opacity: 0, height: 0 }}
             className="overflow-hidden mb-8"
           >
+            {/* Form Fields */}
+            <div>
+              <label htmlFor="link_type">Link Type</label>
+              <select
+                id="link_type"
+                value={newLink.link_type}
+                onChange={(e) =>
+                  setNewLink({
+                    ...newLink,
+                    link_type: e.target.value as Link["link_type"],
+                  })
+                }
+              >
+                <option value="custom">Custom</option>
+                <option value="x">X (Twitter)</option>
+                <option value="instagram">Instagram</option>
+                <option value="facebook">Facebook</option>
+                <option value="youtube">YouTube</option>
+                <option value="linkedin">LinkedIn</option>
+                <option value="github">GitHub</option>
+                <option value="tiktok">TikTok</option>
+              </select>
+            </div>
+
+            <div className="flex items-center">
+              <input
+                type="checkbox"
+                id="is_adult_content"
+                checked={newLink.is_adult_content}
+                onChange={(e) =>
+                  setNewLink({ ...newLink, is_adult_content: e.target.checked })
+                }
+              />
+              <label htmlFor="is_adult_content">Adult Content</label>
+            </div>
             <div className="card p-6">
               <h2 className="text-lg font-medium mb-4">Add New Link</h2>
 
@@ -291,6 +334,52 @@ export default function LinksPage() {
                           </label>
                         </div>
 
+                        <div>
+                          <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                            Link Type
+                          </label>
+                          <select
+                            value={newLink.link_type}
+                            onChange={(e) =>
+                              setNewLink({
+                                ...newLink,
+                                link_type: e.target.value as Link["link_type"], // Cast to the correct type
+                              })
+                            }
+                            className="input"
+                          >
+                            <option value="custom">Custom</option>
+                            <option value="x">X (Twitter)</option>
+                            <option value="instagram">Instagram</option>
+                            <option value="facebook">Facebook</option>
+                            <option value="youtube">YouTube</option>
+                            <option value="linkedin">LinkedIn</option>
+                            <option value="github">GitHub</option>
+                            <option value="tiktok">TikTok</option>
+                          </select>
+                        </div>
+
+                        <div className="flex items-center">
+                          <input
+                            id="is_adult_content"
+                            type="checkbox"
+                            checked={newLink.is_adult_content}
+                            onChange={(e) =>
+                              setNewLink({
+                                ...newLink,
+                                is_adult_content: e.target.checked,
+                              })
+                            }
+                            className="h-4 w-4 text-primary-600 focus:ring-primary-500 border-gray-300 rounded"
+                          />
+                          <label
+                            htmlFor="is_adult_content"
+                            className="ml-2 block text-sm text-gray-700 dark:text-gray-300"
+                          >
+                            Adult Contentsss
+                          </label>
+                        </div>
+
                         {validationError && (
                           <div className="p-3 bg-red-50 dark:bg-red-900/20 text-red-600 dark:text-red-400 rounded-lg flex items-start">
                             <AlertCircle
@@ -330,6 +419,7 @@ export default function LinksPage() {
                         </div>
                         <div>
                           <h3 className="font-medium">{link.title}</h3>
+                          <p className="text-sm text-gray-500 dark:text-gray-400"></p>
                           <div className="flex items-center text-sm text-gray-500 dark:text-gray-400">
                             <a
                               href={link.url}
@@ -371,6 +461,25 @@ export default function LinksPage() {
                           </label>
                         </div>
 
+                        <div className="flex items-center">
+                          <input
+                            id={`toggle-isadult-${link.id}`}
+                            type="checkbox"
+                            checked={link.is_adult_content}
+                            onChange={(e) =>
+                              handleUpdateLink(link.id, {
+                                is_adult_content: e.target.checked,
+                              })
+                            }
+                            className="h-4 w-4 text-primary-600 focus:ring-primary-500 border-gray-300 rounded"
+                          />
+                          <label
+                            htmlFor={`toggle-isadult-${link.id}`}
+                            className="ml-2 text-sm text-gray-700 dark:text-gray-300"
+                          >
+                            Adult Content
+                          </label>
+                        </div>
                         <button
                           className="p-2 rounded-md text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700"
                           onClick={() => setEditingLink(link)}

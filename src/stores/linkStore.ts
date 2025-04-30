@@ -11,6 +11,9 @@ export interface Link {
   is_active: boolean;
   created_at: string;
   updated_at: string;
+  is_adult_content: boolean;
+  link_type: 'custom' | 'x' | 'instagram' | 'facebook' | 'youtube' | 'linkedin' | 'github' | 'tiktok';
+  share_count: number;
 }
 
 interface LinkState {

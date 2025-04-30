@@ -53,7 +53,7 @@ export const useUserStore = create<UserState>((set, get) => ({
         .from('profiles')
         .select('*')
         .eq('id', user.id)
-        .single();
+        .limit(1).maybeSingle()
       
       if (error) throw error;
       

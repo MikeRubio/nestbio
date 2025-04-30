@@ -9,7 +9,7 @@ import LoadingPage from "../pages/LoadingPage";
 export default function AuthLayout() {
   const { user, setUser, isLoading, setLoading } = useUserStore();
   const location = useLocation();
-  const from = (location.state as any)?.from?.pathname || "/";
+  const from = (location.state as any)?.from?.pathname || "/dashboard";
 
   useEffect(() => {
     setLoading(true);
@@ -54,7 +54,7 @@ export default function AuthLayout() {
       </main>
 
       <footer className="py-6 text-center text-gray-500 dark:text-gray-400 text-sm">
-        &copy; {new Date().getFullYear()} NestBio. All rights reserved.
+        &copy; {new Date().getFullYear()} Linko. All rights reserved.
       </footer>
     </div>
   );

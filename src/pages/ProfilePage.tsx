@@ -150,6 +150,11 @@ export default function ProfilePage() {
               >
                 <div className="flex items-center justify-center">
                   <span className="font-medium">{link.title}</span>
+                  {link.is_adult_content && (
+                    <span className="ml-3 px-2 py-0.5 text-xs font-semibold rounded-full bg-red-100 text-red-700 animate-pulse border border-red-300">
+                      🔞 Adult
+                    </span>
+                  )}
                   <ExternalLink size={16} className="ml-2 opacity-50" />
                 </div>
               </motion.a>
