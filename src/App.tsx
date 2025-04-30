@@ -23,6 +23,9 @@ const LinksPage = lazy(() => import("./pages/dashboard/LinksPage"));
 const AppearancePage = lazy(() => import("./pages/dashboard/AppearancePage"));
 const AnalyticsPage = lazy(() => import("./pages/dashboard/AnalyticsPage"));
 const SettingsPage = lazy(() => import("./pages/dashboard/SettingsPage"));
+const SubscriptionPage = lazy(
+  () => import("./pages/dashboard/SubscriptionPage")
+);
 
 function App() {
   const { isDarkMode, setDarkMode } = useThemeStore();
@@ -84,6 +87,7 @@ function App() {
           <Route path="appearance" element={<AppearancePage />} />
           <Route path="analytics" element={<AnalyticsPage />} />
           <Route path="settings" element={<SettingsPage />} />
+          <Route path="subscription" element={<SubscriptionPage />} />
         </Route>
       </Routes>
     </Suspense>

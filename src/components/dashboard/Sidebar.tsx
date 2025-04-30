@@ -8,6 +8,7 @@ import {
   LogOut,
   ExternalLink,
   User,
+  Crown,
 } from "lucide-react";
 import Logo from "../common/Logo";
 import { useUserStore } from "../../stores/userStore";
@@ -34,6 +35,11 @@ export default function Sidebar() {
       name: "Settings",
       icon: <Settings size={20} />,
       path: "/dashboard/settings",
+    },
+    {
+      name: "Premium",
+      icon: <Crown size={20} />,
+      path: "/dashboard/subscription",
     },
   ];
 

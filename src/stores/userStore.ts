@@ -38,6 +38,7 @@ export interface UserProfile {
   contains_sensitive_content: boolean;
   theme_color: string | null;
   background_color: string | null;
+  stripe_customer_id: string | null;
 }
 
 export const useUserStore = create<UserState>((set, get) => ({
