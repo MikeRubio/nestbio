@@ -39,17 +39,25 @@ export default function SubscriptionPage() {
 
   const handleUpgrade = async () => {
     try {
-      const response = await fetch("/api/create-subscription", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          priceId:
-            billingCycle === "monthly" ? "price_monthly" : "price_yearly",
-          customerId: profile?.stripe_customer_id,
-        }),
-      });
+      const response = await fetch(
+        `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/create-subscription`,
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${import.meta.env.VITE_SUPABASE_ANON_KEY}`,
+          },
+          body: JSON.stringify({
+            priceId:
+              billingCycle === "monthly" ? "price_monthly" : "price_yearly",
+            customerId: profile?.stripe_customer_id,
+          }),
+        }
+      );
+
+      if (!response.ok) {
+        throw new Error("Failed to create subscription");
+      }
 
       const data = await response.json();
       if (data.url) {
