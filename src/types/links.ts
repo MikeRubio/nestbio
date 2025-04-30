@@ -11,6 +11,7 @@ export interface Link {
   is_adult_content: boolean;
   link_type: LinkType;
   share_count: number;
+  category?: string;
   created_at: string;
   updated_at: string;
 }

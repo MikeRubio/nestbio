@@ -3,62 +3,142 @@
 @tailwind utilities;
 
 @layer base {
+  :root {
+    --theme-color: #22c55e;
+    --theme-hover: #16a34a;
+  }
+
+  [data-theme-color="gray"] {
+    --theme-color: #6b7280;
+    --theme-hover: #4b5563;
+  }
+
+  [data-theme-color="red"] {
+    --theme-color: #ef4444;
+    --theme-hover: #dc2626;
+  }
+
+  [data-theme-color="orange"] {
+    --theme-color: #f97316;
+    --theme-hover: #ea580c;
+  }
+
+  [data-theme-color="yellow"] {
+    --theme-color: #eab308;
+    --theme-hover: #ca8a04;
+  }
+
+  [data-theme-color="green"] {
+    --theme-color: #22c55e;
+    --theme-hover: #16a34a;
+  }
+
+  [data-theme-color="blue"] {
+    --theme-color: #3b82f6;
+    --theme-hover: #2563eb;
+  }
+
+  [data-theme-color="purple"] {
+    --theme-color: #a855f7;
+    --theme-hover: #9333ea;
+  }
+
+  [data-theme-color="pink"] {
+    --theme-color: #ec4899;
+    --theme-hover: #db2777;
+  }
+
   body {
     @apply bg-gray-50 text-gray-900 dark:bg-gray-900 dark:text-gray-100 transition-colors duration-200;
     font-feature-settings: "cv02", "cv03", "cv04", "cv11";
   }
-  
-  h1, h2, h3, h4, h5, h6 {
+
+  h1,
+  h2,
+  h3,
+  h4,
+  h5,
+  h6 {
     @apply font-semibold tracking-tight;
     line-height: 1.2;
   }
-  
+
   h1 {
     @apply text-3xl md:text-4xl;
   }
-  
+
   h2 {
     @apply text-2xl md:text-3xl;
   }
-  
+
   h3 {
     @apply text-xl md:text-2xl;
   }
-  
-  p, li, input, textarea {
+
+  p,
+  li,
+  input,
+  textarea {
     line-height: 1.5;
   }
-  
+
   ::selection {
-    @apply bg-primary-200 dark:bg-primary-800;
+    background-color: var(--theme-color);
+    @apply text-white;
+  }
+
+  a {
+    color: var(--theme-color);
+    @apply hover:underline;
+  }
+
+  h1,
+  h2,
+  h3,
+  h4,
+  h5,
+  h6 {
+    color: var(--theme-color);
   }
 }
 
 @layer components {
-  .btn {
-    @apply px-4 py-2 rounded-lg font-medium transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed;
+  .bg-theme {
+    background-color: var(--theme-color);
   }
-  
-  .btn-primary {
-    @apply btn bg-primary-500 text-white hover:bg-primary-600 dark:bg-primary-600 dark:hover:bg-primary-700;
+
+  .bg-theme-hover {
+    background-color: var(--theme-hover);
   }
-  
-  .btn-secondary {
-    @apply btn bg-secondary-500 text-white hover:bg-secondary-600 dark:bg-secondary-600 dark:hover:bg-secondary-700;
+
+  .text-theme {
+    color: var(--theme-color);
   }
-  
-  .btn-outline {
-    @apply btn border border-gray-300 hover:bg-gray-100 dark:border-gray-700 dark:hover:bg-gray-800;
+
+  .border-theme {
+    border-color: var(--theme-color);
   }
-  
+
+  .ring-theme {
+    --tw-ring-color: var(--theme-color);
+  }
+
+  .hover\:bg-theme\/10:hover {
+    background-color: color-mix(in srgb, var(--theme-color) 10%, transparent);
+  }
+
   .input {
-    @apply w-full px-4 py-2 rounded-lg border border-gray-300 focus:ring-2 focus:ring-primary-500 focus:border-transparent outline-none transition-all duration-200 bg-white dark:bg-gray-800 dark:border-gray-700;
+    @apply w-full px-4 py-2 rounded-lg border border-gray-300 focus:ring-2 focus:border-transparent outline-none transition-all duration-200 bg-white dark:bg-gray-800 dark:border-gray-700;
+    &:focus {
+      --tw-ring-color: var(--theme-color);
+      --tw-ring-opacity: 0.5;
+    }
   }
-  
+
   .card {
     @apply bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 overflow-hidden;
   }
-  
+
   .link-card {
     @apply card p-4 mb-3 flex items-center hover:shadow-md transition-all duration-200 animate-fade-in;
   }

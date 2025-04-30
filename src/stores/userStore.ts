@@ -29,6 +29,15 @@ export interface UserProfile {
   is_private: boolean;
   created_at: string;
   updated_at: string;
+  full_name: string | null;
+  birthday: string | null;
+  gender: 'male' | 'female' | 'other' | 'prefer_not_to_say' | null;
+  location: string | null;
+  show_view_count: boolean;
+  show_latest_posts: boolean;
+  contains_sensitive_content: boolean;
+  theme_color: string | null;
+  background_color: string | null;
 }
 
 export const useUserStore = create<UserState>((set, get) => ({
@@ -40,33 +49,6 @@ export const useUserStore = create<UserState>((set, get) => ({
   setUser: (user) => set({ user }),
   setProfile: (profile) => set({ profile }),
   setLoading: (isLoading) => set({ isLoading }),
-  
-  fetchProfile: async () => {
-    const { user } = get();
-    
-    if (!user) {
-      set({ isLoading: false });
-      return;
-    }
-    
-    try {
-      set({ isLoading: true, error: null });
-      
-      const { data, error } = await supabase
-        .from('profiles')
-        .select('*')
-        .eq('id', user.id)
-        .limit(1).maybeSingle()
-
-      
-      if (error) throw error;
-      
-      set({ profile: data, isLoading: false });
-    } catch (error) {
-      console.error('Error fetching profile:', error);
-      set({ error: (error as Error).message, isLoading: false });
-    }
-  },
   
   updateProfile: async (updates) => {
     const { user } = get();
@@ -92,6 +74,32 @@ export const useUserStore = create<UserState>((set, get) => ({
       console.error('Error updating profile:', error);
       set({ error: (error as Error).message, isLoading: false });
       throw error;
+    }
+  },
+  
+  fetchProfile: async () => {
+    const { user } = get();
+    
+    if (!user) {
+      set({ isLoading: false });
+      return;
+    }
+    
+    try {
+      set({ isLoading: true, error: null });
+      
+      const { data, error } = await supabase
+        .from('profiles')
+        .select('*')
+        .eq('id', user.id)
+        .single();
+      
+      if (error) throw error;
+      
+      set({ profile: data, isLoading: false });
+    } catch (error) {
+      console.error('Error fetching profile:', error);
+      set({ error: (error as Error).message, isLoading: false });
     }
   },
   

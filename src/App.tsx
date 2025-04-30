@@ -1,6 +1,7 @@
 import { useEffect, lazy, Suspense } from "react";
 import { Routes, Route, useLocation } from "react-router-dom";
 import { useThemeStore } from "./stores/themeStore";
+import { useUserStore } from "./stores/userStore";
 
 // Layout
 import AppLayout from "./layouts/AppLayout";
@@ -25,6 +26,7 @@ const SettingsPage = lazy(() => import("./pages/dashboard/SettingsPage"));
 
 function App() {
   const { isDarkMode, setDarkMode } = useThemeStore();
+  const { profile } = useUserStore();
   const location = useLocation();
 
   // Apply dark mode class to html element
@@ -35,6 +37,16 @@ function App() {
       document.documentElement.classList.remove("dark");
     }
   }, [isDarkMode]);
+
+  // Apply theme color
+  useEffect(() => {
+    if (profile?.theme_color) {
+      document.documentElement.setAttribute(
+        "data-theme-color",
+        profile.theme_color
+      );
+    }
+  }, [profile?.theme_color]);
 
   // Check system preference on mount
   useEffect(() => {
@@ -54,6 +66,7 @@ function App() {
       <Routes>
         {/* Landing page */}
         <Route path="/" element={<LandingPage />} />
+
         {/* Public profile route */}
         <Route path="/:username" element={<ProfilePage />} />
 
@@ -65,12 +78,12 @@ function App() {
         </Route>
 
         {/* Dashboard routes - protected */}
-        <Route element={<AppLayout />}>
-          <Route path="/dashboard" element={<DashboardPage />} />
-          <Route path="/links" element={<LinksPage />} />
-          <Route path="/appearance" element={<AppearancePage />} />
-          <Route path="/analytics" element={<AnalyticsPage />} />
-          <Route path="/settings" element={<SettingsPage />} />
+        <Route path="/dashboard" element={<AppLayout />}>
+          <Route index element={<DashboardPage />} />
+          <Route path="links" element={<LinksPage />} />
+          <Route path="appearance" element={<AppearancePage />} />
+          <Route path="analytics" element={<AnalyticsPage />} />
+          <Route path="settings" element={<SettingsPage />} />
         </Route>
       </Routes>
     </Suspense>

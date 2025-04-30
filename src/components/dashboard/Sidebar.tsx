@@ -19,10 +19,22 @@ export default function Sidebar() {
 
   const navItems = [
     { name: "Dashboard", icon: <Home size={20} />, path: "/dashboard" },
-    { name: "Links", icon: <LinkIcon size={20} />, path: "/links" },
-    { name: "Appearance", icon: <Palette size={20} />, path: "/appearance" },
-    { name: "Analytics", icon: <BarChart2 size={20} />, path: "/analytics" },
-    { name: "Settings", icon: <Settings size={20} />, path: "/settings" },
+    { name: "Links", icon: <LinkIcon size={20} />, path: "/dashboard/links" },
+    {
+      name: "Appearance",
+      icon: <Palette size={20} />,
+      path: "/dashboard/appearance",
+    },
+    {
+      name: "Analytics",
+      icon: <BarChart2 size={20} />,
+      path: "/dashboard/analytics",
+    },
+    {
+      name: "Settings",
+      icon: <Settings size={20} />,
+      path: "/dashboard/settings",
+    },
   ];
 
   const isActive = (path: string) => {
@@ -47,7 +59,7 @@ export default function Sidebar() {
               to={item.path}
               className={`flex items-center px-4 py-3 text-sm font-medium rounded-lg transition-colors ${
                 isActive(item.path)
-                  ? "bg-primary-50 text-primary-600 dark:bg-gray-700 dark:text-primary-400"
+                  ? "bg-theme/10 text-theme"
                   : "text-gray-700 hover:bg-gray-100 dark:text-gray-300 dark:hover:bg-gray-700"
               }`}
             >
@@ -57,7 +69,7 @@ export default function Sidebar() {
               {isActive(item.path) && (
                 <motion.div
                   layoutId="indicator"
-                  className="ml-auto w-1.5 h-1.5 rounded-full bg-primary-500"
+                  className="ml-auto w-1.5 h-1.5 rounded-full bg-theme"
                   initial={{ scale: 0 }}
                   animate={{ scale: 1 }}
                   transition={{ duration: 0.2 }}
@@ -74,7 +86,7 @@ export default function Sidebar() {
             to={`/${profile.username}`}
             target="_blank"
             rel="noopener noreferrer"
-            className="flex items-center justify-center mb-4 px-4 py-2 text-sm font-medium rounded-lg border border-primary-500 text-primary-600 hover:bg-primary-50 dark:border-primary-400 dark:text-primary-400 dark:hover:bg-gray-700 transition-colors"
+            className="flex items-center justify-center mb-4 px-4 py-2 text-sm font-medium rounded-lg border border-theme text-theme hover:bg-theme/10 transition-colors"
           >
             <span className="mr-2">View my page</span>
             <ExternalLink size={16} />

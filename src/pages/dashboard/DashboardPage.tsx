@@ -127,7 +127,7 @@ export default function DashboardPage() {
             </p>
           </div>
           <div>
-            <Link to="/links">
+            <Link to="links">
               <Button variant="primary" leftIcon={<PlusCircle size={16} />}>
                 Add New Link
               </Button>
@@ -146,7 +146,7 @@ export default function DashboardPage() {
             <div className="grid gap-4">
               {links.slice(0, 3).map((link) => (
                 <Link
-                  to="/links"
+                  to="links"
                   key={link.id}
                   className="flex items-center justify-between p-4 rounded-lg border border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors"
                 >
@@ -179,7 +179,7 @@ export default function DashboardPage() {
               {links.length > 3 && (
                 <div className="text-center mt-2">
                   <Link
-                    to="/links"
+                    to="links"
                     className="text-primary-600 dark:text-primary-400 hover:underline"
                   >
                     View all links
@@ -199,7 +199,7 @@ export default function DashboardPage() {
               <p className="text-gray-600 dark:text-gray-400 mb-6 max-w-md mx-auto">
                 Add your first link to start building your personalized profile.
               </p>
-              <Link to="/links">
+              <Link to="links">
                 <Button variant="primary" leftIcon={<PlusCircle size={16} />}>
                   Add Your First Link
                 </Button>

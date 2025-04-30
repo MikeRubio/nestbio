@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { useParams, Link } from "react-router-dom";
-import { ExternalLink, ArrowRight, Share2 } from "lucide-react";
+import { ExternalLink, ArrowRight } from "lucide-react";
 import { motion } from "framer-motion";
 import { supabase } from "../lib/supabaseClient";
 import { UserProfile } from "../stores/userStore";
@@ -8,7 +8,7 @@ import { Link as LinkType } from "../stores/linkStore";
 import { templates } from "../types/templates";
 import Logo from "../components/common/Logo";
 import Button from "../components/common/Button";
-import ShareButton from "../components/links/ShareButton";
+import ConfirmModal from "../components/common/ConfirmModal"; // ✅ Make sure this file exists
 
 export default function ProfilePage() {
   const { username } = useParams<{ username: string }>();
@@ -17,8 +17,11 @@ export default function ProfilePage() {
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
+  const [showModal, setShowModal] = useState(false);
+  const [pendingLink, setPendingLink] = useState<LinkType | null>(null);
+
   const template =
-    templates.find((t) => t.id === profile?.template_id) || templates[0];
+    templates.find((t) => t.id === profile?.template_id) || templates[5];
 
   useEffect(() => {
     const fetchProfile = async () => {
@@ -31,7 +34,6 @@ export default function ProfilePage() {
           return;
         }
 
-        // Fetch profile
         const { data: profileData, error: profileError } = await supabase
           .from("profiles")
           .select("*")
@@ -47,7 +49,6 @@ export default function ProfilePage() {
 
         setProfile(profileData);
 
-        // Fetch links
         const { data: linksData, error: linksError } = await supabase
           .from("links")
           .select("*")
@@ -83,6 +84,20 @@ export default function ProfilePage() {
     }
   };
 
+  const handleAdultLinkConfirm = () => {
+    if (pendingLink) {
+      window.open(pendingLink.url, "_blank");
+      trackClick(pendingLink.id);
+    }
+    setShowModal(false);
+    setPendingLink(null);
+  };
+
+  const handleAdultLinkCancel = () => {
+    setShowModal(false);
+    setPendingLink(null);
+  };
+
   if (isLoading) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-gray-50 dark:bg-gray-900">
@@ -112,19 +127,6 @@ export default function ProfilePage() {
 
   return (
     <div className={`min-h-screen flex flex-col ${template.colors.background}`}>
-      <header className="p-4 flex justify-between items-center backdrop-blur-sm bg-black/10">
-        <Logo variant="light" />
-        <Link to="/">
-          <Button
-            variant="outline"
-            size="sm"
-            className="!text-white !border-white/20 hover:!bg-white/10"
-          >
-            Create Your Own
-          </Button>
-        </Link>
-      </header>
-
       <main className="flex-1 flex flex-col items-center max-w-md mx-auto w-full px-4 py-8 relative z-10">
         <motion.div
           initial={{ opacity: 0, y: 20 }}
@@ -190,39 +192,25 @@ export default function ProfilePage() {
                   </a>
                 ) : (
                   <div
-                    className={`block w-full p-4 rounded-xl ${template.colors.buttonBg} backdrop-blur-sm ${template.colors.buttonText} ${template.fonts.body}`}
+                    onClick={() => {
+                      setPendingLink(link);
+                      setShowModal(true);
+                    }}
+                    className={`block w-full p-4 cursor-pointer ${
+                      template.styles?.buttonRadius || "rounded-xl"
+                    } ${template.colors.buttonBg} backdrop-blur-sm ${
+                      template.colors.buttonText
+                    } ${template.fonts.body}`}
                   >
                     <div className="flex items-center justify-between">
                       <div>
                         <span className="font-medium">{link.title}</span>
                         <span className="ml-2 text-sm opacity-75">(18+)</span>
                       </div>
-                      <button
-                        onClick={() => {
-                          if (
-                            confirm(
-                              "This link contains adult content. Are you 18 or older?"
-                            )
-                          ) {
-                            window.open(link.url, "_blank");
-                            trackClick(link.id);
-                          }
-                        }}
-                        className="opacity-50 hover:opacity-100 transition-opacity"
-                      >
-                        <ExternalLink size={16} />
-                      </button>
+                      <ExternalLink size={16} className="opacity-50" />
                     </div>
                   </div>
                 )}
-
-                <div className="absolute -right-2 top-1/2 -translate-y-1/2 opacity-0 group-hover:opacity-100 group-hover:right-0 transition-all duration-200">
-                  <ShareButton
-                    linkId={link.id}
-                    url={link.url}
-                    title={link.title}
-                  />
-                </div>
               </motion.div>
             ))
           ) : (
@@ -236,10 +224,35 @@ export default function ProfilePage() {
       </main>
 
       <footer
-        className={`py-6 text-center text-sm ${template.colors.text} opacity-75`}
+        className={`py-6 text-center text-sm flex flex-col gap-4 ${template.colors.text} opacity-75`}
       >
-        Powered by <span className={template.fonts.heading}>Nestbio</span>
+        <Link to="/">
+          <Button
+            variant="outline"
+            size="md"
+            className={`block p-4 ${
+              template.styles?.buttonRadius || "rounded-xl"
+            } ${template.colors.buttonBg} ${
+              template.styles?.buttonShadow || ""
+            } transition-all duration-200 group-hover:scale-[1.02] ${
+              template.colors.buttonText
+            } ${template.fonts.body}`}
+          >
+            Create Your Own
+          </Button>
+        </Link>
+        <span>
+          Powered by <span className={template.fonts.heading}>Nestbio</span>
+        </span>
       </footer>
+
+      <ConfirmModal
+        isOpen={showModal}
+        onCancel={handleAdultLinkCancel}
+        onConfirm={handleAdultLinkConfirm}
+        title="Are you 18 or older?"
+        description="This link contains adult content. Do you wish to continue?"
+      />
     </div>
   );
 }
