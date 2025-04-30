@@ -7,9 +7,10 @@ import Button from "../../components/common/Button";
 import { supabase } from "../../lib/supabaseClient";
 
 export default function SubscriptionPage() {
-  const { profile } = useUserStore();
+  const { profile, user } = useUserStore();
   const [subscription, setSubscription] = useState<Subscription | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const [billingCycle, setBillingCycle] = useState<"monthly" | "yearly">(
     "yearly"
   );
@@ -20,8 +21,8 @@ export default function SubscriptionPage() {
         const { data, error } = await supabase
           .from("subscriptions")
           .select("*")
-          .eq("user_id", profile?.id)
-          .single();
+          .eq("user_id", user?.id)
+          .maybeSingle();
 
         if (error) throw error;
         setSubscription(data);
@@ -32,13 +33,16 @@ export default function SubscriptionPage() {
       }
     };
 
-    if (profile) {
+    if (user) {
       fetchSubscription();
     }
-  }, [profile]);
+  }, [user]);
 
   const handleUpgrade = async () => {
     try {
+      setError(null);
+      setIsLoading(true);
+
       const response = await fetch(
         `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/create-subscription`,
         {
@@ -50,13 +54,13 @@ export default function SubscriptionPage() {
           body: JSON.stringify({
             priceId:
               billingCycle === "monthly" ? "price_monthly" : "price_yearly",
-            customerId: profile?.stripe_customer_id,
           }),
         }
       );
 
       if (!response.ok) {
-        throw new Error("Failed to create subscription");
+        const errorData = await response.json();
+        throw new Error(errorData.error || "Failed to create subscription");
       }
 
       const data = await response.json();
@@ -65,6 +69,11 @@ export default function SubscriptionPage() {
       }
     } catch (error) {
       console.error("Error creating subscription:", error);
+      setError(
+        error instanceof Error ? error.message : "An unknown error occurred"
+      );
+    } finally {
+      setIsLoading(false);
     }
   };
 
