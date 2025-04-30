@@ -7,7 +7,7 @@ import Button from "../../components/common/Button";
 import { supabase } from "../../lib/supabaseClient";
 
 export default function SubscriptionPage() {
-  const { profile, user } = useUserStore();
+  const { profile } = useUserStore();
   const [subscription, setSubscription] = useState<Subscription | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -21,7 +21,7 @@ export default function SubscriptionPage() {
         const { data, error } = await supabase
           .from("subscriptions")
           .select("*")
-          .eq("user_id", user?.id)
+          .eq("user_id", profile?.id)
           .maybeSingle();
 
         if (error) throw error;
@@ -33,15 +33,20 @@ export default function SubscriptionPage() {
       }
     };
 
-    if (user) {
+    if (profile) {
       fetchSubscription();
     }
-  }, [user]);
+  }, [profile]);
 
   const handleUpgrade = async () => {
     try {
-      setError(null);
       setIsLoading(true);
+      setError(null);
+
+      const {
+        data: { session },
+      } = await supabase.auth.getSession();
+      if (!session) throw new Error("Not authenticated");
 
       const response = await fetch(
         `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/create-subscription`,
@@ -49,7 +54,7 @@ export default function SubscriptionPage() {
           method: "POST",
           headers: {
             "Content-Type": "application/json",
-            Authorization: `Bearer ${import.meta.env.VITE_SUPABASE_ANON_KEY}`,
+            Authorization: `Bearer ${session.access_token}`,
           },
           body: JSON.stringify({
             priceId:
@@ -88,6 +93,7 @@ export default function SubscriptionPage() {
 
       if (error) throw error;
 
+      // Refresh subscription data
       const { data } = await supabase
         .from("subscriptions")
         .select("*")

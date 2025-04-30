@@ -1,6 +1,6 @@
-import { serve } from 'https://deno.land/std@0.168.0/http/server.ts';
-import { createClient } from 'npm:@supabase/supabase-js@2.39.3';
-import Stripe from 'npm:stripe@14.18.0';
+import { serve } from "npm:@deno/std@0.168.0/http/server";
+import { createClient } from "npm:@supabase/supabase-js@2.39.3";
+import Stripe from "npm:stripe@14.18.0";
 
 const stripe = new Stripe(Deno.env.get('STRIPE_SECRET_KEY') || '', {
   apiVersion: '2023-10-16',
@@ -21,29 +21,39 @@ serve(async (req) => {
   }
 
   try {
-    const { priceId, customerId } = await req.json();
+    // Get the JWT token from the Authorization header
+    const authHeader = req.headers.get('Authorization');
+    if (!authHeader) {
+      throw new Error('No authorization header');
+    }
+
+    // Get the user from the JWT token
+    const { data: { user }, error: authError } = await supabase.auth.getUser(
+      authHeader.replace('Bearer ', '')
+    );
+
+    if (authError || !user) {
+      throw new Error('User not authenticated');
+    }
+
+    const { priceId } = await req.json();
+
+    // Get user profile
+    const { data: profile, error: profileError } = await supabase
+      .from('profiles')
+      .select('*')
+      .eq('id', user.id)
+      .single();
+
+    if (profileError) {
+      throw new Error('Profile not found');
+    }
 
     // Create or retrieve Stripe customer
     let customer;
-    if (customerId) {
-      customer = await stripe.customers.retrieve(customerId);
+    if (profile.stripe_customer_id) {
+      customer = await stripe.customers.retrieve(profile.stripe_customer_id);
     } else {
-      const { data: { user } } = await supabase.auth.getUser(
-        req.headers.get('Authorization')?.replace('Bearer ', '') || ''
-      );
-
-      if (!user) {
-        throw new Error('User not found');
-      }
-
-      // Get user profile
-      const { data: profile } = await supabase
-        .from('profiles')
-        .select('*')
-        .eq('id', user.id)
-        .single();
-
-      // Create Stripe customer
       customer = await stripe.customers.create({
         email: user.email,
         metadata: {
