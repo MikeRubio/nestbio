@@ -35,12 +35,17 @@ export default function ProfileImageUpload({
     setError(null);
 
     try {
+      const {
+        data: { user },
+      } = await supabase.auth.getUser();
+      if (!user) throw new Error("No user logged in");
+
       // Upload image to Supabase Storage
       const fileExt = file.name.split(".").pop();
-      const fileName = `${Math.random()}.${fileExt}`;
-      const filePath = `profile-images/${fileName}`;
+      const fileName = `${user.id}-${Math.random()}.${fileExt}`;
+      const filePath = `${fileName}`;
 
-      const { error: uploadError, data } = await supabase.storage
+      const { error: uploadError } = await supabase.storage
         .from("avatars")
         .upload(filePath, file);
 
@@ -68,9 +73,7 @@ export default function ProfileImageUpload({
       const filePath = currentImageUrl.split("/").pop();
       if (!filePath) return;
 
-      await supabase.storage
-        .from("avatars")
-        .remove([`profile-images/${filePath}`]);
+      await supabase.storage.from("avatars").remove([filePath]);
 
       onUpload("");
     } catch (error) {

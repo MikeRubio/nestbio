@@ -1,12 +1,14 @@
 import { useEffect, useState } from "react";
 import { useParams, Link } from "react-router-dom";
-import { ExternalLink, ArrowRight } from "lucide-react";
+import { ExternalLink, ArrowRight, Share2 } from "lucide-react";
 import { motion } from "framer-motion";
 import { supabase } from "../lib/supabaseClient";
 import { UserProfile } from "../stores/userStore";
 import { Link as LinkType } from "../stores/linkStore";
+import { templates } from "../types/templates";
 import Logo from "../components/common/Logo";
 import Button from "../components/common/Button";
+import ShareButton from "../components/links/ShareButton";
 
 export default function ProfilePage() {
   const { username } = useParams<{ username: string }>();
@@ -14,6 +16,9 @@ export default function ProfilePage() {
   const [links, setLinks] = useState<LinkType[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+
+  const template =
+    templates.find((t) => t.id === profile?.template_id) || templates[0];
 
   useEffect(() => {
     const fetchProfile = async () => {
@@ -98,7 +103,7 @@ export default function ProfilePage() {
         </p>
         <Link to="/">
           <Button variant="primary" rightIcon={<ArrowRight size={16} />}>
-            Create Your Own Linko
+            Create Your Own Nestbio
           </Button>
         </Link>
       </div>
@@ -106,62 +111,123 @@ export default function ProfilePage() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50 dark:bg-gray-900 flex flex-col">
-      <header className="p-4 flex justify-between items-center">
-        <Logo />
+    <div className={`min-h-screen flex flex-col ${template.colors.background}`}>
+      <header className="p-4 flex justify-between items-center backdrop-blur-sm bg-black/10">
+        <Logo variant="light" />
         <Link to="/">
-          <Button variant="outline" size="sm">
+          <Button
+            variant="outline"
+            size="sm"
+            className="!text-white !border-white/20 hover:!bg-white/10"
+          >
             Create Your Own
           </Button>
         </Link>
       </header>
 
-      <main className="flex-1 flex flex-col items-center max-w-md mx-auto w-full px-4 py-8">
+      <main className="flex-1 flex flex-col items-center max-w-md mx-auto w-full px-4 py-8 relative z-10">
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.5 }}
-          className="text-center mb-8"
+          className={`text-center mb-8 ${template.colors.cardBg} p-8 rounded-2xl backdrop-blur-sm`}
         >
-          <div className="w-24 h-24 bg-gradient-to-br from-primary-400 to-secondary-400 rounded-full flex items-center justify-center text-white text-2xl font-bold mb-4 mx-auto">
-            {profile.username.charAt(0).toUpperCase()}
-          </div>
-          <h1 className="text-2xl font-bold mb-2">{profile.title}</h1>
+          {profile.profile_image_url ? (
+            <img
+              src={profile.profile_image_url}
+              alt={profile.username}
+              className={`w-24 h-24 rounded-full border-4 border-white/20 object-cover mx-auto mb-4 ${
+                template.styles?.imageFilter || ""
+              }`}
+            />
+          ) : (
+            <div className="w-24 h-24 rounded-full bg-white/20 flex items-center justify-center text-white text-2xl font-bold mb-4 mx-auto">
+              {profile.username.charAt(0).toUpperCase()}
+            </div>
+          )}
+          <h1
+            className={`text-2xl font-bold mb-2 ${template.colors.text} ${template.fonts.heading}`}
+          >
+            {profile.title}
+          </h1>
           {profile.bio && (
-            <p className="text-gray-600 dark:text-gray-400">{profile.bio}</p>
+            <p
+              className={`${template.colors.text} opacity-90 ${template.fonts.body}`}
+            >
+              {profile.bio}
+            </p>
           )}
         </motion.div>
 
         <div className="w-full space-y-4">
           {links.length > 0 ? (
             links.map((link, index) => (
-              <motion.a
+              <motion.div
                 key={link.id}
-                href={link.url}
-                target="_blank"
-                rel="noopener noreferrer"
-                onClick={() => trackClick(link.id)}
-                className="block w-full p-4 rounded-lg bg-white dark:bg-gray-800 shadow-sm border border-gray-200 dark:border-gray-700 hover:shadow-md transition-all duration-200 text-center"
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
-                transition={{ duration: 0.3, delay: 0.1 * index }}
-                whileHover={{ y: -2 }}
-                whileTap={{ y: 0 }}
+                transition={{ duration: 0.3, delay: index * 0.1 }}
+                className="relative group"
               >
-                <div className="flex items-center justify-center">
-                  <span className="font-medium">{link.title}</span>
-                  {link.is_adult_content && (
-                    <span className="ml-3 px-2 py-0.5 text-xs font-semibold rounded-full bg-red-100 text-red-700 animate-pulse border border-red-300">
-                      🔞 Adult
-                    </span>
-                  )}
-                  <ExternalLink size={16} className="ml-2 opacity-50" />
+                {!link.is_adult_content ? (
+                  <a
+                    href={link.url}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    onClick={() => trackClick(link.id)}
+                    className={`block w-full p-4 ${
+                      template.styles?.buttonRadius || "rounded-xl"
+                    } ${template.colors.buttonBg} ${
+                      template.styles?.buttonShadow || ""
+                    } transition-all duration-200 group-hover:scale-[1.02] ${
+                      template.colors.buttonText
+                    } ${template.fonts.body}`}
+                  >
+                    <div className="flex items-center justify-between">
+                      <span className="font-medium">{link.title}</span>
+                      <ExternalLink size={16} className="opacity-50" />
+                    </div>
+                  </a>
+                ) : (
+                  <div
+                    className={`block w-full p-4 rounded-xl ${template.colors.buttonBg} backdrop-blur-sm ${template.colors.buttonText} ${template.fonts.body}`}
+                  >
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <span className="font-medium">{link.title}</span>
+                        <span className="ml-2 text-sm opacity-75">(18+)</span>
+                      </div>
+                      <button
+                        onClick={() => {
+                          if (
+                            confirm(
+                              "This link contains adult content. Are you 18 or older?"
+                            )
+                          ) {
+                            window.open(link.url, "_blank");
+                            trackClick(link.id);
+                          }
+                        }}
+                        className="opacity-50 hover:opacity-100 transition-opacity"
+                      >
+                        <ExternalLink size={16} />
+                      </button>
+                    </div>
+                  </div>
+                )}
+
+                <div className="absolute -right-2 top-1/2 -translate-y-1/2 opacity-0 group-hover:opacity-100 group-hover:right-0 transition-all duration-200">
+                  <ShareButton
+                    linkId={link.id}
+                    url={link.url}
+                    title={link.title}
+                  />
                 </div>
-              </motion.a>
+              </motion.div>
             ))
           ) : (
             <div className="text-center py-8">
-              <p className="text-gray-500 dark:text-gray-400">
+              <p className={`${template.colors.text} opacity-75`}>
                 No links available yet.
               </p>
             </div>
@@ -169,8 +235,10 @@ export default function ProfilePage() {
         </div>
       </main>
 
-      <footer className="py-6 text-center text-sm text-gray-500 dark:text-gray-400">
-        Powered by <span className="font-medium">NestBio - Linko</span>
+      <footer
+        className={`py-6 text-center text-sm ${template.colors.text} opacity-75`}
+      >
+        Powered by <span className={template.fonts.heading}>Nestbio</span>
       </footer>
     </div>
   );
