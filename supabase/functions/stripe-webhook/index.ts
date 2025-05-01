@@ -1,5 +1,5 @@
-import { createClient } from "npm:@supabase/supabase-js@2.39.3";
 import Stripe from "npm:stripe@14.18.0";
+import { createClient } from "npm:@supabase/supabase-js@2.39.3";
 
 const stripe = new Stripe(Deno.env.get('STRIPE_SECRET_KEY') || '', {
   apiVersion: '2023-10-16',
@@ -27,14 +27,17 @@ Deno.serve(async (req) => {
       throw new Error('No stripe signature found');
     }
 
-    const body = await req.text();
-    // Use constructEventAsync instead of constructEvent
+    // Get the raw request body as text
+    const rawBody = await req.text();
+    
+    // Verify webhook signature
     const event = await stripe.webhooks.constructEventAsync(
-      body,
+      rawBody,
       signature,
       endpointSecret
     );
 
+    // Handle subscription events
     switch (event.type) {
       case 'customer.subscription.created':
       case 'customer.subscription.updated': {
@@ -65,19 +68,6 @@ Deno.serve(async (req) => {
           throw subscriptionError;
         }
 
-        // Update profile premium status directly
-        const { error: profileError } = await supabase
-          .from('profiles')
-          .update({
-            is_premium: subscription.status === 'active',
-            subscription_id: subscription.id,
-          })
-          .eq('id', userId);
-
-        if (profileError) {
-          throw profileError;
-        }
-
         break;
       }
 
@@ -102,19 +92,6 @@ Deno.serve(async (req) => {
 
         if (subscriptionError) {
           throw subscriptionError;
-        }
-
-        // Update profile premium status
-        const { error: profileError } = await supabase
-          .from('profiles')
-          .update({
-            is_premium: false,
-            subscription_id: null,
-          })
-          .eq('id', userId);
-
-        if (profileError) {
-          throw profileError;
         }
 
         break;
