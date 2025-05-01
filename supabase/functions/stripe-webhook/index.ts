@@ -1,10 +1,10 @@
 import Stripe from "npm:stripe@14.18.0";
 import { createClient } from "npm:@supabase/supabase-js@2.39.3";
 
-// Initialize Stripe and Supabase
 const stripe = new Stripe(Deno.env.get("STRIPE_SECRET_KEY") || "", {
   apiVersion: "2023-10-16",
 });
+
 const supabase = createClient(
   Deno.env.get("SUPABASE_URL") || "",
   Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") || ""
@@ -14,39 +14,50 @@ const endpointSecret = Deno.env.get("STRIPE_WEBHOOK_SECRET") || "";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Headers":
-    "authorization, x-client-info, apikey, content-type, stripe-signature",
+  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type, stripe-signature",
+  "Access-Control-Allow-Methods": "POST, OPTIONS",
 };
 
-// Serve the function
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") {
     return new Response("ok", { headers: corsHeaders });
   }
 
   try {
+    // Get the signature from headers
     const signature = req.headers.get("stripe-signature");
-    if (!signature) throw new Error("Missing Stripe signature header");
+    if (!signature) {
+      throw new Error("No stripe signature found");
+    }
 
-    const bodyText = await req.text(); 
+    // Get raw body as text
+    const rawBody = await req.text();
+    
+    // Verify webhook signature
     const event = await stripe.webhooks.constructEventAsync(
-      bodyText,
+      rawBody,
       signature,
-      endpointSecret
+      endpointSecret,
+      undefined,
+      Stripe.webhooks.createVerify()
     );
 
-    // Handle relevant event types
+    // Handle the event
     switch (event.type) {
       case "customer.subscription.created":
       case "customer.subscription.updated": {
         const subscription = event.data.object;
         const customerId = subscription.customer as string;
+        
+        // Get customer to find user ID
         const customer = await stripe.customers.retrieve(customerId);
         const userId = customer.metadata?.supabase_user_id;
+        
+        if (!userId) {
+          throw new Error("No user ID found in customer metadata");
+        }
 
-        if (!userId) throw new Error("No user ID in customer metadata");
-
-        // Update subscriptions table
+        // Update subscription in database
         const { error: subscriptionError } = await supabase
           .from("subscriptions")
           .upsert({
@@ -54,15 +65,13 @@ Deno.serve(async (req) => {
             user_id: userId,
             status: subscription.status,
             plan: "premium",
-            current_period_end: new Date(
-              subscription.current_period_end * 1000
-            ).toISOString(),
+            current_period_end: new Date(subscription.current_period_end * 1000).toISOString(),
             cancel_at_period_end: subscription.cancel_at_period_end,
           });
 
         if (subscriptionError) throw subscriptionError;
 
-        // Update profile
+        // Update user profile
         const { error: profileError } = await supabase
           .from("profiles")
           .update({
@@ -72,30 +81,31 @@ Deno.serve(async (req) => {
           .eq("id", userId);
 
         if (profileError) throw profileError;
-
         break;
       }
 
       case "customer.subscription.deleted": {
         const subscription = event.data.object;
         const customerId = subscription.customer as string;
+        
+        // Get customer to find user ID
         const customer = await stripe.customers.retrieve(customerId);
         const userId = customer.metadata?.supabase_user_id;
+        
+        if (!userId) {
+          throw new Error("No user ID found in customer metadata");
+        }
 
-        if (!userId) throw new Error("No user ID in customer metadata");
-
-        // Cancel subscription
-        const { error: cancelError } = await supabase
+        // Update subscription status
+        const { error: subscriptionError } = await supabase
           .from("subscriptions")
           .update({
             status: "canceled",
-            current_period_end: new Date(
-              subscription.current_period_end * 1000
-            ).toISOString(),
+            current_period_end: new Date(subscription.current_period_end * 1000).toISOString(),
           })
           .eq("id", subscription.id);
 
-        if (cancelError) throw cancelError;
+        if (subscriptionError) throw subscriptionError;
 
         // Update user profile
         const { error: profileError } = await supabase
@@ -107,22 +117,21 @@ Deno.serve(async (req) => {
           .eq("id", userId);
 
         if (profileError) throw profileError;
-
         break;
       }
     }
 
     return new Response(JSON.stringify({ received: true }), {
-      status: 200,
       headers: { ...corsHeaders, "Content-Type": "application/json" },
+      status: 200,
     });
   } catch (err) {
-    console.error("❌ Webhook error:", err);
+    console.error("Webhook error:", err.message);
     return new Response(
       JSON.stringify({ error: err.message }),
       {
-        status: 400,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
+        status: 400,
       }
     );
   }
