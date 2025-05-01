@@ -1,5 +1,6 @@
 import Stripe from "npm:stripe@14.18.0";
 import { createClient } from "npm:@supabase/supabase-js@2.39.3";
+import { Buffer } from "node:buffer";
 
 // Initialize Stripe and Supabase
 const stripe = new Stripe(Deno.env.get("STRIPE_SECRET_KEY") || "", {
@@ -28,12 +29,12 @@ Deno.serve(async (req) => {
     const signature = req.headers.get("stripe-signature");
     if (!signature) throw new Error("Missing Stripe signature header");
 
-    // Get the raw request body as text
-    const rawBody = await req.text();
+    // Use raw bytes (ArrayBuffer)
+    const bodyBuffer = await req.arrayBuffer();
 
     // Validate and construct the event
     const event = await stripe.webhooks.constructEventAsync(
-      rawBody,
+      Buffer.from(bodyBuffer),
       signature,
       endpointSecret
     );
