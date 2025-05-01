@@ -13,7 +13,7 @@ const endpointSecret = Deno.env.get('STRIPE_WEBHOOK_SECRET') || '';
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
+  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type, stripe-signature',
 };
 
 Deno.serve(async (req) => {
@@ -27,32 +27,40 @@ Deno.serve(async (req) => {
       throw new Error('No stripe signature found');
     }
 
-    // Get the raw request body as text
-    const rawBody = await req.text();
-    
-    // Verify webhook signature
+    // Read the raw body from the stream
+    const chunks: Uint8Array[] = [];
+    const reader = req.body?.getReader();
+    if (!reader) throw new Error("Could not read request body");
+
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      chunks.push(value);
+    }
+
+    const rawBody = Buffer.concat(chunks);
+
+    // Verify and construct event
     const event = await stripe.webhooks.constructEventAsync(
       rawBody,
       signature,
       endpointSecret
     );
 
-    // Handle subscription events
+    // Handle events
     switch (event.type) {
       case 'customer.subscription.created':
       case 'customer.subscription.updated': {
         const subscription = event.data.object;
         const customerId = subscription.customer as string;
 
-        // Get customer to find Supabase user ID
         const customer = await stripe.customers.retrieve(customerId);
-        const userId = customer.metadata.supabase_user_id;
+        const userId = customer.metadata?.supabase_user_id;
 
         if (!userId) {
           throw new Error('No user ID found in customer metadata');
         }
 
-        // Update subscription in database
         const { error: subscriptionError } = await supabase
           .from('subscriptions')
           .upsert({
@@ -64,9 +72,17 @@ Deno.serve(async (req) => {
             cancel_at_period_end: subscription.cancel_at_period_end,
           });
 
-        if (subscriptionError) {
-          throw subscriptionError;
-        }
+        if (subscriptionError) throw subscriptionError;
+
+        const { error: profileError } = await supabase
+          .from('profiles')
+          .update({
+            is_premium: subscription.status === 'active',
+            subscription_id: subscription.id,
+          })
+          .eq('id', userId);
+
+        if (profileError) throw profileError;
 
         break;
       }
@@ -74,14 +90,14 @@ Deno.serve(async (req) => {
       case 'customer.subscription.deleted': {
         const subscription = event.data.object;
         const customerId = subscription.customer as string;
+
         const customer = await stripe.customers.retrieve(customerId);
-        const userId = customer.metadata.supabase_user_id;
+        const userId = customer.metadata?.supabase_user_id;
 
         if (!userId) {
           throw new Error('No user ID found in customer metadata');
         }
 
-        // Update subscription status
         const { error: subscriptionError } = await supabase
           .from('subscriptions')
           .update({
@@ -90,25 +106,33 @@ Deno.serve(async (req) => {
           })
           .eq('id', subscription.id);
 
-        if (subscriptionError) {
-          throw subscriptionError;
-        }
+        if (subscriptionError) throw subscriptionError;
+
+        const { error: profileError } = await supabase
+          .from('profiles')
+          .update({
+            is_premium: false,
+            subscription_id: null,
+          })
+          .eq('id', userId);
+
+        if (profileError) throw profileError;
 
         break;
       }
     }
 
     return new Response(JSON.stringify({ received: true }), {
-      headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       status: 200,
+      headers: { ...corsHeaders, 'Content-Type': 'application/json' },
     });
   } catch (err) {
     console.error('Webhook error:', err);
     return new Response(
       JSON.stringify({ error: err.message }),
-      { 
+      {
         status: 400,
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       }
     );
   }
