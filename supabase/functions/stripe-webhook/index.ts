@@ -1,6 +1,6 @@
-import { serve } from 'https://deno.land/std@0.168.0/http/server.ts';
-import { createClient } from 'npm:@supabase/supabase-js@2.39.3';
-import Stripe from 'npm:stripe@14.18.0';
+import { serve } from "npm:@deno/std@0.168.0/http/server";
+import { createClient } from "npm:@supabase/supabase-js@2.39.3";
+import Stripe from "npm:stripe@14.18.0";
 
 const stripe = new Stripe(Deno.env.get('STRIPE_SECRET_KEY') || '', {
   apiVersion: '2023-10-16',
@@ -30,7 +30,6 @@ serve(async (req) => {
 
     const body = await req.text();
     const event = stripe.webhooks.constructEvent(body, signature, endpointSecret);
-    console.log('Processing webhook event:', event.type);
 
     switch (event.type) {
       case 'customer.subscription.created':
@@ -62,11 +61,31 @@ serve(async (req) => {
           throw subscriptionError;
         }
 
+        // Update profile premium status directly
+        const { error: profileError } = await supabase
+          .from('profiles')
+          .update({
+            is_premium: subscription.status === 'active',
+            subscription_id: subscription.id,
+          })
+          .eq('id', userId);
+
+        if (profileError) {
+          throw profileError;
+        }
+
         break;
       }
 
       case 'customer.subscription.deleted': {
         const subscription = event.data.object;
+        const customerId = subscription.customer as string;
+        const customer = await stripe.customers.retrieve(customerId);
+        const userId = customer.metadata.supabase_user_id;
+
+        if (!userId) {
+          throw new Error('No user ID found in customer metadata');
+        }
 
         // Update subscription status
         const { error: subscriptionError } = await supabase
@@ -79,6 +98,19 @@ serve(async (req) => {
 
         if (subscriptionError) {
           throw subscriptionError;
+        }
+
+        // Update profile premium status
+        const { error: profileError } = await supabase
+          .from('profiles')
+          .update({
+            is_premium: false,
+            subscription_id: null,
+          })
+          .eq('id', userId);
+
+        if (profileError) {
+          throw profileError;
         }
 
         break;
