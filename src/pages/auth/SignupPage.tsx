@@ -103,7 +103,7 @@ export default function SignupPage() {
               pattern="[a-z0-9_]+"
               minLength={3}
               maxLength={30}
-              className="input pl-24"
+              className="input pl-[6.5rem]"
             />
           </div>
           <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">

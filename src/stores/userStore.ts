@@ -39,6 +39,7 @@ export interface UserProfile {
   theme_color: string | null;
   background_color: string | null;
   stripe_customer_id: string | null;
+  is_premium: boolean;
 }
 
 export const useUserStore = create<UserState>((set, get) => ({

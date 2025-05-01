@@ -1,17 +1,19 @@
 import { useState } from "react";
 import { motion } from "framer-motion";
-import { Palette, Image as ImageIcon, Layout, User } from "lucide-react";
+import { Palette, Image as ImageIcon, Layout, User, Crown } from "lucide-react";
 import { useUserStore } from "../../stores/userStore";
 import { Template, templates } from "../../types/templates";
 import { ProfileSettings, THEME_COLORS } from "../../types/profile";
+import { SUBSCRIPTION_PLANS } from "../../types/subscription";
 import Button from "../../components/common/Button";
 import TemplateGrid from "../../components/templates/TemplateGrid";
 import ProfileImageUpload from "../../components/profile/ProfileImageUpload";
+import { Link } from "react-router-dom";
 
 export default function AppearancePage() {
   const { profile, updateProfile, isLoading } = useUserStore();
   const [selectedTemplate, setSelectedTemplate] = useState<Template>(
-    () => templates.find((t) => t.id === profile?.template_id) || templates[5]
+    () => templates.find((t) => t.id === profile?.template_id) || templates[0]
   );
   const [activeTab, setActiveTab] = useState<"template" | "profile">("profile");
 
@@ -27,6 +29,12 @@ export default function AppearancePage() {
     themeColor: profile?.theme_color || THEME_COLORS[4].id, // Default to green
     backgroundColor: profile?.background_color ?? undefined,
   });
+
+  const availableTemplates = profile?.is_premium
+    ? templates
+    : templates.filter((t) =>
+        SUBSCRIPTION_PLANS.free.limits.templates.includes(t.id as any)
+      );
 
   const handleTemplateSelect = (template: Template) => {
     setSelectedTemplate(template);
@@ -74,12 +82,41 @@ export default function AppearancePage() {
   return (
     <div className="max-w-6xl mx-auto">
       <header className="mb-8">
-        <h1 className="text-2xl font-display mb-2">Customize Your Page</h1>
+        <h1 className="text-3xl font-display bg-gradient-to-r from-primary-600 to-secondary-600 bg-clip-text text-transparent mb-2">
+          Customize Your Page
+        </h1>
         <p className="text-gray-600 dark:text-gray-400">
           Make your profile unique with our beautiful templates and
           customization options
         </p>
       </header>
+
+      {!profile?.is_premium && (
+        <div className="mb-8 p-4 bg-primary-50 dark:bg-primary-900/20 rounded-lg border border-primary-200 dark:border-primary-800">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <div className="p-2 rounded-full bg-primary-100 dark:bg-primary-900">
+                <Crown
+                  size={20}
+                  className="text-primary-600 dark:text-primary-400"
+                />
+              </div>
+              <div>
+                <h3 className="font-medium text-primary-700 dark:text-primary-300">
+                  Unlock All Templates
+                </h3>
+                <p className="text-sm text-primary-600 dark:text-primary-400">
+                  Upgrade to Premium to access all premium templates and
+                  customization options
+                </p>
+              </div>
+            </div>
+            <Link to="/dashboard/subscription">
+              <Button variant="primary">Upgrade Now</Button>
+            </Link>
+          </div>
+        </div>
+      )}
 
       <div className="flex gap-4 mb-8">
         <button
@@ -125,6 +162,8 @@ export default function AppearancePage() {
               <TemplateGrid
                 onSelect={handleTemplateSelect}
                 selectedTemplate={selectedTemplate}
+                availableTemplates={availableTemplates}
+                showPremiumIndicator={!profile?.is_premium}
               />
             </div>
           </div>
@@ -164,7 +203,6 @@ export default function AppearancePage() {
                   onUpload={handleProfileUpdate}
                 />
               </div>
-
               <div>
                 <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
                   Full Name

@@ -1,56 +1,56 @@
 import { useState, useEffect } from "react";
-import { Plus, Globe } from "lucide-react";
+import { Plus, Globe, AlertCircle } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
-import { useLinkStore, Link } from "../../stores/linkStore";
+import { useLinkStore, Link as LinkStoreType } from "../../stores/linkStore";
 import { useUserStore } from "../../stores/userStore";
-import { templates } from "../../types/templates";
 import Button from "../../components/common/Button";
 import LinkForm from "../../components/links/LinkForm";
 import LinkCard from "../../components/links/LinkCard";
-import CategoryDivider from "../../components/links/CategoryDivider";
 import AdultContentModal from "../../components/modals/AdultContentModal";
-import {
-  groupLinksByCategory,
-  getDefaultCategories,
-} from "../../utils/linkUtils";
-import { supabase } from "../../lib/supabaseClient";
+import { SUBSCRIPTION_PLANS } from "../../types/subscription";
+import { Link } from "react-router-dom";
 
 export default function LinksPage() {
   const { links, fetchLinks, createLink, updateLink, deleteLink, isLoading } =
     useLinkStore();
   const { profile } = useUserStore();
-  const [editingLink, setEditingLink] = useState<Link | null>(null);
+  const [editingLink, setEditingLink] = useState<LinkStoreType | null>(null);
   const [showForm, setShowForm] = useState(false);
-  const [selectedLink, setSelectedLink] = useState<Link | null>(null);
+  const [selectedLink, setSelectedLink] = useState<LinkStoreType | null>(null);
   const [showAdultModal, setShowAdultModal] = useState(false);
-  const [categories, setCategories] = useState<string[]>(
-    getDefaultCategories()
-  );
-
-  const template =
-    templates.find((t) => t.id === profile?.template_id) || templates[5];
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     fetchLinks();
   }, [fetchLinks]);
 
   const handleAddLink = async (linkData: any) => {
-    const {
-      data: { user },
-    } = await supabase.auth.getUser();
+    if (
+      !profile?.is_premium &&
+      links.length >= SUBSCRIPTION_PLANS.free.limits.links
+    ) {
+      setError(
+        "You have reached the maximum number of links for the free plan. Upgrade to Premium for unlimited links."
+      );
+      return;
+    }
 
     const newLink = {
       ...linkData,
-      user_id: user?.id ?? "", // Will be replaced by RLS
+      user_id: profile?.id,
       icon: "link",
       order: links.length,
     };
 
     await createLink(newLink);
     setShowForm(false);
+    setError(null);
   };
 
-  const handleUpdateLink = async (id: string, changes: Partial<Link>) => {
+  const handleUpdateLink = async (
+    id: string,
+    changes: Partial<LinkStoreType>
+  ) => {
     await updateLink(id, changes);
     setEditingLink(null);
   };
@@ -61,7 +61,7 @@ export default function LinksPage() {
     }
   };
 
-  const handleLinkClick = (link: Link) => {
+  const handleLinkClick = (link: LinkStoreType) => {
     if (link.is_adult_content) {
       setSelectedLink(link);
       setShowAdultModal(true);
@@ -78,24 +78,33 @@ export default function LinksPage() {
     }
   };
 
-  const addCategory = () => {
-    const name = prompt("Enter category name:");
-    if (name) {
-      setCategories([...categories, name]);
-    }
-  };
-
-  const linksByCategory = groupLinksByCategory(links);
-
   return (
     <div className="max-w-4xl mx-auto">
       <header className="mb-8">
-        <h1 className={`text-2xl ${template.fonts.heading} mb-2`}>
-          Manage Links
-        </h1>
+        <h1 className="text-2xl font-bold mb-2">Manage Links</h1>
         <p className="text-gray-600 dark:text-gray-400">
           Create and organize the links for your profile
         </p>
+        {!profile?.is_premium && (
+          <div className="mt-4 p-4 bg-primary-50 dark:bg-primary-900/20 rounded-lg border border-primary-200 dark:border-primary-800">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-primary-700 dark:text-primary-300">
+                  {links.length} of {SUBSCRIPTION_PLANS.free.limits.links} links
+                  used
+                </p>
+                <p className="text-sm text-primary-600 dark:text-primary-400">
+                  Upgrade to Premium for unlimited links
+                </p>
+              </div>
+              <Link to="/dashboard/subscription">
+                <Button variant="primary" size="sm">
+                  Upgrade Now
+                </Button>
+              </Link>
+            </div>
+          </div>
+        )}
       </header>
 
       <div className="card">
@@ -106,6 +115,10 @@ export default function LinksPage() {
             leftIcon={<Plus size={18} />}
             variant="primary"
             size="sm"
+            disabled={
+              !profile?.is_premium &&
+              links.length >= SUBSCRIPTION_PLANS.free.limits.links
+            }
           >
             Add Link
           </Button>
@@ -121,9 +134,20 @@ export default function LinksPage() {
             >
               <LinkForm
                 onSubmit={handleAddLink}
-                onCancel={() => setShowForm(false)}
+                onCancel={() => {
+                  setShowForm(false);
+                  setError(null);
+                }}
                 isLoading={isLoading}
               />
+              {error && (
+                <div className="px-6 pb-4">
+                  <div className="flex items-start gap-2 text-sm text-red-600 dark:text-red-400">
+                    <AlertCircle size={16} className="mt-0.5 flex-shrink-0" />
+                    <p>{error}</p>
+                  </div>
+                </div>
+              )}
             </motion.div>
           )}
         </AnimatePresence>
@@ -137,40 +161,29 @@ export default function LinksPage() {
             </div>
           ) : links.length > 0 ? (
             <div className="space-y-4">
-              {categories.map((category) => (
-                <div key={category}>
-                  <CategoryDivider
-                    title={category}
-                    isEditing={true}
-                    onAdd={addCategory}
-                  />
-                  {linksByCategory[category]?.map((link) => (
-                    <motion.div
-                      key={link.id}
-                      layout
-                      className="relative bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg overflow-hidden group"
-                    >
-                      {editingLink?.id === link.id ? (
-                        <LinkForm
-                          mode="edit"
-                          initialData={editingLink}
-                          onSubmit={(changes) =>
-                            handleUpdateLink(link.id, changes)
-                          }
-                          onCancel={() => setEditingLink(null)}
-                          isLoading={isLoading}
-                        />
-                      ) : (
-                        <LinkCard
-                          link={link}
-                          onEdit={setEditingLink}
-                          onDelete={handleDelete}
-                          onLinkClick={handleLinkClick}
-                        />
-                      )}
-                    </motion.div>
-                  ))}
-                </div>
+              {links.map((link) => (
+                <motion.div
+                  key={link.id}
+                  layout
+                  className="relative bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg overflow-hidden group"
+                >
+                  {editingLink?.id === link.id ? (
+                    <LinkForm
+                      mode="edit"
+                      initialData={editingLink}
+                      onSubmit={(changes) => handleUpdateLink(link.id, changes)}
+                      onCancel={() => setEditingLink(null)}
+                      isLoading={isLoading}
+                    />
+                  ) : (
+                    <LinkCard
+                      link={link}
+                      onEdit={setEditingLink}
+                      onDelete={handleDelete}
+                      onLinkClick={handleLinkClick}
+                    />
+                  )}
+                </motion.div>
               ))}
             </div>
           ) : (
