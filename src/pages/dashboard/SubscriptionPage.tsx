@@ -58,7 +58,9 @@ export default function SubscriptionPage() {
           },
           body: JSON.stringify({
             priceId:
-              billingCycle === "monthly" ? "price_monthly" : "price_yearly",
+              billingCycle === "monthly"
+                ? "prod_SE2Z7zaaYf3iGj"
+                : "prod_SE2ZEMs4sSHfXK",
           }),
         }
       );
