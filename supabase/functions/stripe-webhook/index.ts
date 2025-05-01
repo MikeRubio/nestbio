@@ -18,7 +18,6 @@ const corsHeaders = {
 };
 
 serve(async (req) => {
-  // Handle CORS preflight requests
   if (req.method === 'OPTIONS') {
     return new Response('ok', { headers: corsHeaders });
   }
@@ -30,8 +29,6 @@ serve(async (req) => {
     }
 
     const body = await req.text();
-    console.log('Received webhook. Constructing event...');
-
     const event = stripe.webhooks.constructEvent(body, signature, endpointSecret);
     console.log('Processing webhook event:', event.type);
 
@@ -41,8 +38,6 @@ serve(async (req) => {
         const subscription = event.data.object;
         const customerId = subscription.customer as string;
 
-        console.log('Processing subscription:', subscription.id);
-
         // Get customer to find Supabase user ID
         const customer = await stripe.customers.retrieve(customerId);
         const userId = customer.metadata.supabase_user_id;
@@ -50,8 +45,6 @@ serve(async (req) => {
         if (!userId) {
           throw new Error('No user ID found in customer metadata');
         }
-
-        console.log('Updating subscription for user:', userId);
 
         // Update subscription in database
         const { error: subscriptionError } = await supabase
@@ -66,45 +59,14 @@ serve(async (req) => {
           });
 
         if (subscriptionError) {
-          console.error('Error updating subscription:', subscriptionError);
           throw subscriptionError;
         }
 
-        console.log('Updating profile premium status');
-
-        // Update profile is_premium status
-        const { error: profileError } = await supabase
-          .from('profiles')
-          .update({
-            is_premium: subscription.status === 'active',
-            subscription_id: subscription.id
-          })
-          .eq('id', userId);
-
-        if (profileError) {
-          console.error('Error updating profile:', profileError);
-          throw profileError;
-        }
-
-        console.log('Successfully processed subscription update');
         break;
       }
 
       case 'customer.subscription.deleted': {
         const subscription = event.data.object;
-        const customerId = subscription.customer as string;
-
-        console.log('Processing subscription deletion:', subscription.id);
-
-        // Get customer to find Supabase user ID
-        const customer = await stripe.customers.retrieve(customerId);
-        const userId = customer.metadata.supabase_user_id;
-
-        if (!userId) {
-          throw new Error('No user ID found in customer metadata');
-        }
-
-        console.log('Updating subscription status for user:', userId);
 
         // Update subscription status
         const { error: subscriptionError } = await supabase
@@ -116,27 +78,9 @@ serve(async (req) => {
           .eq('id', subscription.id);
 
         if (subscriptionError) {
-          console.error('Error updating subscription:', subscriptionError);
           throw subscriptionError;
         }
 
-        console.log('Updating profile premium status');
-
-        // Update profile is_premium status
-        const { error: profileError } = await supabase
-          .from('profiles')
-          .update({
-            is_premium: false,
-            subscription_id: null
-          })
-          .eq('id', userId);
-
-        if (profileError) {
-          console.error('Error updating profile:', profileError);
-          throw profileError;
-        }
-
-        console.log('Successfully processed subscription deletion');
         break;
       }
     }
