@@ -1,4 +1,3 @@
-import { serve } from "npm:@deno/std@0.168.0/http/server";
 import { createClient } from "npm:@supabase/supabase-js@2.39.3";
 import Stripe from "npm:stripe@14.18.0";
 
@@ -17,7 +16,7 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
 
-serve(async (req) => {
+Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') {
     return new Response('ok', { headers: corsHeaders });
   }
@@ -29,7 +28,12 @@ serve(async (req) => {
     }
 
     const body = await req.text();
-    const event = stripe.webhooks.constructEvent(body, signature, endpointSecret);
+    // Use constructEventAsync instead of constructEvent
+    const event = await stripe.webhooks.constructEventAsync(
+      body,
+      signature,
+      endpointSecret
+    );
 
     switch (event.type) {
       case 'customer.subscription.created':
