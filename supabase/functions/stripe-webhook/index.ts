@@ -28,12 +28,12 @@ Deno.serve(async (req) => {
     const signature = req.headers.get("stripe-signature");
     if (!signature) throw new Error("Missing Stripe signature header");
 
-    // Use raw bytes (ArrayBuffer)
-    const bodyBuffer = await req.arrayBuffer();
+    // Get the raw request body as text
+    const rawBody = await req.text();
 
     // Validate and construct the event
     const event = await stripe.webhooks.constructEventAsync(
-      Buffer.from(bodyBuffer),
+      rawBody,
       signature,
       endpointSecret
     );
