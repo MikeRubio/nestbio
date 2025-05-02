@@ -7,7 +7,7 @@ const stripe = new Stripe(process.env.VITE_STRIPE_SECRET_KEY, {
 
 const supabase = createClient(
   process.env.VITE_SUPABASE_URL,
-  process.env.VITE_SUPABASE_ANON_KEY
+  process.env.VITE_SUPABASE_SERVICE_ROLE_KEY
 );
 
 exports.handler = async (event) => {
@@ -31,24 +31,24 @@ exports.handler = async (event) => {
     if (!token) {
       return {
         statusCode: 401,
-        body: JSON.stringify({ error: "Unauthorized" }),
+        body: JSON.stringify({ error: "Unauthorized: No token provided" }),
       };
     }
 
-    // Get Supabase user
-    const { data: userData, error: userError } = await supabase.auth.getUser(
-      token
-    );
-    if (userError || !userData?.user) {
+    // Get user using service role key (admin privileges)
+    const {
+      data: { user },
+      error: userError,
+    } = await supabase.auth.getUser(token);
+
+    if (userError || !user) {
       return {
         statusCode: 401,
-        body: JSON.stringify({ error: "Invalid user session" }),
+        body: JSON.stringify({ error: "Invalid or expired user session" }),
       };
     }
 
-    const user = userData.user;
-
-    // Fetch profile to get or create stripe_customer_id
+    // Fetch user profile to get or set Stripe customer ID
     const { data: profile, error: profileError } = await supabase
       .from("profiles")
       .select("stripe_customer_id")
@@ -58,13 +58,14 @@ exports.handler = async (event) => {
     if (profileError) {
       return {
         statusCode: 500,
-        body: JSON.stringify({ error: "Failed to fetch profile" }),
+        body: JSON.stringify({ error: "Failed to fetch user profile" }),
       };
     }
 
     let customerId = profile?.stripe_customer_id;
 
     if (!customerId) {
+      // Create Stripe customer
       const customer = await stripe.customers.create({
         email: user.email,
         metadata: { supabase_user_id: user.id },
@@ -72,11 +73,20 @@ exports.handler = async (event) => {
 
       customerId = customer.id;
 
-      // Update profile with customerId
-      await supabase
+      // Update profile with new customer ID
+      const { error: updateError } = await supabase
         .from("profiles")
         .update({ stripe_customer_id: customerId })
         .eq("id", user.id);
+
+      if (updateError) {
+        return {
+          statusCode: 500,
+          body: JSON.stringify({
+            error: "Failed to update customer ID in profile",
+          }),
+        };
+      }
     }
 
     // Create Stripe Checkout Session
@@ -93,10 +103,10 @@ exports.handler = async (event) => {
       body: JSON.stringify({ url: session.url }),
     };
   } catch (error) {
-    console.error("Error creating subscription:", error.message);
+    console.error("Error creating subscription:", error);
     return {
       statusCode: 400,
-      body: JSON.stringify({ error: error.message }),
+      body: JSON.stringify({ error: error.message || "Unknown error" }),
     };
   }
 };
