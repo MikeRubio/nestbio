@@ -38,8 +38,14 @@ exports.handler = async (event) => {
         if (!userId) throw new Error("No user ID found in customer metadata");
 
         // Validate timestamps
+        const subscriptionItem = subscription.items?.data?.[0];
+        if (!subscriptionItem) {
+          throw new Error("No subscription item found");
+        }
+
         const currentPeriodEndTimestamp =
-          subscription.current_period_end * 1000;
+          subscriptionItem.current_period_end * 1000;
+
         if (isNaN(currentPeriodEndTimestamp)) {
           throw new Error("Invalid current_period_end timestamp");
         }
@@ -72,7 +78,7 @@ exports.handler = async (event) => {
         await supabase
           .from("profiles")
           .update({
-            is_premium: subscription.status === "active",
+            is_premium: ["active", "trialing"].includes(subscription.status),
             subscription_id: subscription.id,
             updated_at: updated.toISOString(),
           })
@@ -97,7 +103,9 @@ exports.handler = async (event) => {
           throw new Error("Invalid current_period_end timestamp");
         }
 
-        const updatedTimestamp = subscription.updated * 1000;
+        const updatedTimestamp =
+          (subscription.updated ?? Date.now() / 1000) * 1000;
+
         if (isNaN(updatedTimestamp)) {
           throw new Error("Invalid updated timestamp");
         }
@@ -125,6 +133,9 @@ exports.handler = async (event) => {
 
         break;
       }
+      default:
+        console.log(`Unhandled event type ${stripeEvent.type}`);
+        break;
     }
 
     return {
