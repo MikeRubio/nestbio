@@ -1,3 +1,4 @@
+import express from "npm:express@4.18.2";
 import Stripe from "npm:stripe@14.18.0";
 import { createClient } from "npm:@supabase/supabase-js@2.39.3";
 
@@ -10,36 +11,29 @@ const supabase = createClient(
   Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") || ""
 );
 
-const endpointSecret = Deno.env.get("STRIPE_WEBHOOK_SECRET") || "";
+const app = express();
 
-const corsHeaders = {
-  "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type, stripe-signature",
-  "Access-Control-Allow-Methods": "POST, OPTIONS",
-};
+// Parse raw body for Stripe webhook
+app.use((req, res, next) => {
+  let data = "";
+  req.on("data", (chunk) => {
+    data += chunk;
+  });
+  req.on("end", () => {
+    req.rawBody = data;
+    next();
+  });
+});
 
-Deno.serve(async (req) => {
-  if (req.method === "OPTIONS") {
-    return new Response("ok", { headers: corsHeaders });
-  }
+app.post("/", async (req, res) => {
+  const sig = req.headers["stripe-signature"];
+  const endpointSecret = Deno.env.get("STRIPE_WEBHOOK_SECRET");
 
   try {
-    // Get the signature from headers
-    const signature = req.headers.get("stripe-signature");
-    if (!signature) {
-      throw new Error("No stripe signature found");
-    }
-
-    // Get raw body as text
-    const rawBody = await req.text();
-    
-    // Verify webhook signature
-    const event = await stripe.webhooks.constructEventAsync(
-      rawBody,
-      signature,
-      endpointSecret,
-      undefined,
-      Stripe.webhooks.createVerify()
+    const event = stripe.webhooks.constructEvent(
+      req.rawBody,
+      sig,
+      endpointSecret
     );
 
     // Handle the event
@@ -47,7 +41,7 @@ Deno.serve(async (req) => {
       case "customer.subscription.created":
       case "customer.subscription.updated": {
         const subscription = event.data.object;
-        const customerId = subscription.customer as string;
+        const customerId = subscription.customer;
         
         // Get customer to find user ID
         const customer = await stripe.customers.retrieve(customerId);
@@ -86,7 +80,7 @@ Deno.serve(async (req) => {
 
       case "customer.subscription.deleted": {
         const subscription = event.data.object;
-        const customerId = subscription.customer as string;
+        const customerId = subscription.customer;
         
         // Get customer to find user ID
         const customer = await stripe.customers.retrieve(customerId);
@@ -121,18 +115,11 @@ Deno.serve(async (req) => {
       }
     }
 
-    return new Response(JSON.stringify({ received: true }), {
-      headers: { ...corsHeaders, "Content-Type": "application/json" },
-      status: 200,
-    });
+    res.json({ received: true });
   } catch (err) {
     console.error("Webhook error:", err.message);
-    return new Response(
-      JSON.stringify({ error: err.message }),
-      {
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-        status: 400,
-      }
-    );
+    res.status(400).send(`Webhook Error: ${err.message}`);
   }
 });
+
+app.listen(8000);
