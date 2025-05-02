@@ -37,11 +37,26 @@ exports.handler = async (event) => {
 
         if (!userId) throw new Error("No user ID found in customer metadata");
 
-        const currentPeriodEnd = new Date(
-          subscription.current_period_end * 1000
-        );
-        const created = new Date();
-        const updated = new Date();
+        // Validate timestamps
+        const currentPeriodEndTimestamp =
+          subscription.current_period_end * 1000;
+        if (isNaN(currentPeriodEndTimestamp)) {
+          throw new Error("Invalid current_period_end timestamp");
+        }
+
+        const createdTimestamp = subscription.created * 1000;
+        if (isNaN(createdTimestamp)) {
+          throw new Error("Invalid created timestamp");
+        }
+
+        const updatedTimestamp = subscription.updated * 1000;
+        if (isNaN(updatedTimestamp)) {
+          throw new Error("Invalid updated timestamp");
+        }
+
+        const currentPeriodEnd = new Date(currentPeriodEndTimestamp);
+        const created = new Date(createdTimestamp);
+        const updated = new Date(updatedTimestamp);
 
         await supabase.from("subscriptions").upsert({
           id: subscription.id,
@@ -75,10 +90,20 @@ exports.handler = async (event) => {
 
         if (!userId) throw new Error("No user ID found in customer metadata");
 
-        const currentPeriodEnd = new Date(
-          subscription.current_period_end * 1000
-        );
-        const updated = new Date();
+        // Validate timestamps
+        const currentPeriodEndTimestamp =
+          subscription.current_period_end * 1000;
+        if (isNaN(currentPeriodEndTimestamp)) {
+          throw new Error("Invalid current_period_end timestamp");
+        }
+
+        const updatedTimestamp = subscription.updated * 1000;
+        if (isNaN(updatedTimestamp)) {
+          throw new Error("Invalid updated timestamp");
+        }
+
+        const currentPeriodEnd = new Date(currentPeriodEndTimestamp);
+        const updated = new Date(updatedTimestamp);
 
         await supabase
           .from("subscriptions")
