@@ -2,7 +2,7 @@ import { serve } from "npm:@deno/std@0.168.0/http/server";
 import { createClient } from "npm:@supabase/supabase-js@2.39.3";
 import Stripe from "npm:stripe@14.18.0";
 
-const stripe = new Stripe(Deno.env.get('STRIPE_SECRET_KEY') || '', {
+const stripe = new Stripe(Deno.env.get('VITE_STRIPE_WEBHOOK_SECRET') || '', {
   apiVersion: '2023-10-16',
 });
 

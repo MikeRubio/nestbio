@@ -2,7 +2,7 @@ import { serve } from 'https://deno.land/std@0.168.0/http/server.ts';
 import { createClient } from 'npm:@supabase/supabase-js@2.39.3';
 import Stripe from 'npm:stripe@14.18.0';
 
-const stripe = new Stripe(Deno.env.get('STRIPE_SECRET_KEY') || '', {
+const stripe = new Stripe(Deno.env.get('VITE_STRIPE_WEBHOOK_SECRET') || '', {
   apiVersion: '2023-10-16',
 });
 
@@ -10,7 +10,7 @@ const supabaseUrl = Deno.env.get('SUPABASE_URL') || '';
 const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') || '';
 const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
-const endpointSecret = Deno.env.get('STRIPE_WEBHOOK_SECRET') || '';
+const endpointSecret = Deno.env.get('VITE_STRIPE_WEBHOOK_SECRET') || '';
 
 serve(async (req) => {
   const signature = req.headers.get('stripe-signature');

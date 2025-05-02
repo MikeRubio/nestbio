@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { motion } from "framer-motion";
-import { Check, Crown, Star } from "lucide-react";
+import { Check, Crown, Star, AlertCircle } from "lucide-react";
 import { useUserStore } from "../../stores/userStore";
 import { SUBSCRIPTION_PLANS, Subscription } from "../../types/subscription";
 import Button from "../../components/common/Button";
@@ -43,27 +43,20 @@ export default function SubscriptionPage() {
       setIsLoading(true);
       setError(null);
 
-      const {
-        data: { session },
-      } = await supabase.auth.getSession();
-      if (!session) throw new Error("Not authenticated");
-
-      const response = await fetch(
-        `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/create-subscription`,
-        {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            Authorization: `Bearer ${session.access_token}`,
-          },
-          body: JSON.stringify({
-            priceId:
-              billingCycle === "monthly"
-                ? "price_1RJaTzBNpxoXCrO64xrJcksz"
-                : "price_1RJaUZBNpxoXCrO6YLtEBaNM",
-          }),
-        }
-      );
+      //const response = await fetch("/.netlify/functions/create-subscription", {
+      const response = await fetch("/api/create-subscription", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          priceId:
+            billingCycle === "monthly"
+              ? "price_1RJaTzBNpxoXCrO64xrJcksz"
+              : "price_1RJaUZBNpxoXCrO6YLtEBaNM",
+          customerId: profile?.stripe_customer_id,
+        }),
+      });
 
       if (!response.ok) {
         const errorData = await response.json();
@@ -88,14 +81,16 @@ export default function SubscriptionPage() {
     if (!confirm("Are you sure you want to cancel your subscription?")) return;
 
     try {
-      const { error } = await supabase
+      setIsLoading(true);
+      setError(null);
+
+      const { error: updateError } = await supabase
         .from("subscriptions")
         .update({ cancel_at_period_end: true })
         .eq("id", subscription?.id);
 
-      if (error) throw error;
+      if (updateError) throw updateError;
 
-      // Refresh subscription data
       const { data } = await supabase
         .from("subscriptions")
         .select("*")
@@ -105,6 +100,11 @@ export default function SubscriptionPage() {
       setSubscription(data);
     } catch (error) {
       console.error("Error canceling subscription:", error);
+      setError(
+        error instanceof Error ? error.message : "An unknown error occurred"
+      );
+    } finally {
+      setIsLoading(false);
     }
   };
 
@@ -118,6 +118,15 @@ export default function SubscriptionPage() {
           Manage your subscription and billing
         </p>
       </header>
+
+      {error && (
+        <div className="mb-8 p-4 bg-red-50 dark:bg-red-900/20 rounded-lg border border-red-200 dark:border-red-800">
+          <div className="flex items-center gap-2 text-red-600 dark:text-red-400">
+            <AlertCircle size={20} />
+            <p>{error}</p>
+          </div>
+        </div>
+      )}
 
       <div className="mb-8">
         <div className="flex justify-center gap-4 mb-8">
