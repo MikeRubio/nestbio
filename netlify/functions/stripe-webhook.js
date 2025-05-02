@@ -37,15 +37,21 @@ exports.handler = async (event) => {
 
         if (!userId) throw new Error("No user ID found in customer metadata");
 
+        const currentPeriodEnd = new Date(
+          subscription.current_period_end * 1000
+        );
+        const created = new Date();
+        const updated = new Date();
+
         await supabase.from("subscriptions").upsert({
           id: subscription.id,
           user_id: userId,
           status: subscription.status,
           plan: "premium",
-          current_period_end: new Date(
-            subscription.current_period_end * 1000
-          ).toISOString(),
+          current_period_end: currentPeriodEnd.toISOString(),
           cancel_at_period_end: subscription.cancel_at_period_end,
+          created_at: created.toISOString(),
+          updated_at: updated.toISOString(),
         });
 
         await supabase
@@ -53,6 +59,7 @@ exports.handler = async (event) => {
           .update({
             is_premium: subscription.status === "active",
             subscription_id: subscription.id,
+            updated_at: updated.toISOString(),
           })
           .eq("id", userId);
 
@@ -68,13 +75,17 @@ exports.handler = async (event) => {
 
         if (!userId) throw new Error("No user ID found in customer metadata");
 
+        const currentPeriodEnd = new Date(
+          subscription.current_period_end * 1000
+        );
+        const updated = new Date();
+
         await supabase
           .from("subscriptions")
           .update({
             status: "canceled",
-            current_period_end: new Date(
-              subscription.current_period_end * 1000
-            ).toISOString(),
+            current_period_end: currentPeriodEnd.toISOString(),
+            updated_at: updated.toISOString(),
           })
           .eq("id", subscription.id);
 
@@ -83,6 +94,7 @@ exports.handler = async (event) => {
           .update({
             is_premium: false,
             subscription_id: null,
+            updated_at: updated.toISOString(),
           })
           .eq("id", userId);
 
