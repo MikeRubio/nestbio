@@ -45,7 +45,6 @@ exports.handler = async (event) => {
 
         const currentPeriodEndTimestamp =
           subscriptionItem.current_period_end * 1000;
-
         if (isNaN(currentPeriodEndTimestamp)) {
           throw new Error("Invalid current_period_end timestamp");
         }
@@ -55,9 +54,11 @@ exports.handler = async (event) => {
           throw new Error("Invalid created timestamp");
         }
 
-        const updatedTimestamp = subscription.updated * 1000;
+        // Fallback if `updated` is missing
+        const updatedTimestamp =
+          (subscription.updated ?? subscription.created) * 1000;
         if (isNaN(updatedTimestamp)) {
-          throw new Error("Invalid updated timestamp");
+          throw new Error("Invalid updated timestamp fallback");
         }
 
         const currentPeriodEnd = new Date(currentPeriodEndTimestamp);
@@ -96,7 +97,6 @@ exports.handler = async (event) => {
 
         if (!userId) throw new Error("No user ID found in customer metadata");
 
-        // Validate timestamps
         const currentPeriodEndTimestamp =
           subscription.current_period_end * 1000;
         if (isNaN(currentPeriodEndTimestamp)) {
@@ -104,10 +104,9 @@ exports.handler = async (event) => {
         }
 
         const updatedTimestamp =
-          (subscription.updated ?? Date.now() / 1000) * 1000;
-
+          (subscription.updated ?? subscription.created) * 1000;
         if (isNaN(updatedTimestamp)) {
-          throw new Error("Invalid updated timestamp");
+          throw new Error("Invalid updated timestamp fallback");
         }
 
         const currentPeriodEnd = new Date(currentPeriodEndTimestamp);
