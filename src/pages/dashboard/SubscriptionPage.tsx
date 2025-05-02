@@ -42,12 +42,16 @@ export default function SubscriptionPage() {
     try {
       setIsLoading(true);
       setError(null);
-
-      //const response = await fetch("/.netlify/functions/create-subscription", {
+      const { data: session } = await supabase.auth.getSession();
+      if (!session) {
+        setError("You must be logged in to upgrade your subscription.");
+        return;
+      }
       const response = await fetch("/.netlify/functions/create-subscription", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
+          Authorization: `Bearer ${session?.session?.access_token}`,
         },
         body: JSON.stringify({
           priceId:
