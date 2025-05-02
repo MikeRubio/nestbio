@@ -44,7 +44,7 @@ export default function SubscriptionPage() {
       setError(null);
 
       //const response = await fetch("/.netlify/functions/create-subscription", {
-      const response = await fetch("/api/create-subscription", {
+      const response = await fetch("/.netlify/functions/create-subscription", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
