@@ -7,7 +7,7 @@ const stripe = new Stripe(process.env.VITE_STRIPE_SECRET_KEY, {
 
 const supabase = createClient(
   process.env.VITE_SUPABASE_URL,
-  process.env.VITE_SUPABASE_SERVICE_ROLE_KEY
+  process.env.VITE_SUPABASE_ANON_KEY
 );
 
 exports.handler = async (event) => {
