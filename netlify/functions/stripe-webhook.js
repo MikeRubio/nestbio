@@ -26,93 +26,72 @@ exports.handler = async (event) => {
       process.env.STRIPE_WEBHOOK_SECRET
     );
 
+    const subscription = stripeEvent.data.object;
+
+    // Skip incomplete subscriptions
+    if (subscription.status === "incomplete") {
+      return {
+        statusCode: 200,
+        body: JSON.stringify({ skipped: true, reason: "incomplete status" }),
+      };
+    }
+
+    const customerId = subscription.customer;
+    const customer = await stripe.customers.retrieve(customerId);
+    const userId = customer.metadata?.supabase_user_id;
+
+    if (!userId) throw new Error("No user ID found in customer metadata");
+
+    const subscriptionItem = subscription.items?.data?.[0];
+    if (!subscriptionItem) throw new Error("No subscription item found");
+
+    const currentPeriodEnd = new Date(
+      subscriptionItem.current_period_end * 1000
+    );
+    const created = new Date(subscription.created * 1000);
+    const updated = new Date(subscription.updated * 1000);
+
     switch (stripeEvent.type) {
       case "customer.subscription.created":
       case "customer.subscription.updated": {
-        const subscription = stripeEvent.data.object;
-        const customerId = subscription.customer;
+        const { error: subError } = await supabase.from("subscriptions").upsert(
+          {
+            id: subscription.id,
+            user_id: userId,
+            status: subscription.status,
+            plan: "premium",
+            current_period_end: currentPeriodEnd.toISOString(),
+            cancel_at_period_end: subscription.cancel_at_period_end,
+            created_at: created.toISOString(),
+            updated_at: updated.toISOString(),
+          },
+          { onConflict: "id" }
+        );
 
-        const customer = await stripe.customers.retrieve(customerId);
-        const userId = customer.metadata?.supabase_user_id;
-
-        if (!userId) throw new Error("No user ID found in customer metadata");
-
-        // Validate timestamps
-        const subscriptionItem = subscription.items?.data?.[0];
-        if (!subscriptionItem) {
-          throw new Error("No subscription item found");
+        if (subError) {
+          console.error("Upsert subscriptions failed:", subError.message);
+          throw new Error("Subscription upsert failed");
         }
 
-        const currentPeriodEndTimestamp =
-          subscriptionItem.current_period_end * 1000;
-        if (isNaN(currentPeriodEndTimestamp)) {
-          throw new Error("Invalid current_period_end timestamp");
-        }
-
-        const createdTimestamp = subscription.created * 1000;
-        if (isNaN(createdTimestamp)) {
-          throw new Error("Invalid created timestamp");
-        }
-
-        // Fallback if `updated` is missing
-        const updatedTimestamp =
-          (subscription.updated ?? subscription.created) * 1000;
-        if (isNaN(updatedTimestamp)) {
-          throw new Error("Invalid updated timestamp fallback");
-        }
-
-        const currentPeriodEnd = new Date(currentPeriodEndTimestamp);
-        const created = new Date(createdTimestamp);
-        const updated = new Date(updatedTimestamp);
-
-        await supabase.from("subscriptions").upsert({
-          id: subscription.id,
-          user_id: userId,
-          status: subscription.status,
-          plan: "premium",
-          current_period_end: currentPeriodEnd.toISOString(),
-          cancel_at_period_end: subscription.cancel_at_period_end,
-          created_at: created.toISOString(),
-          updated_at: updated.toISOString(),
-        });
-
-        await supabase
+        const { error: profileError } = await supabase
           .from("profiles")
           .update({
-            is_premium: ["active", "trialing"].includes(subscription.status),
+            is_premium: subscription.status === "active",
             subscription_id: subscription.id,
             updated_at: updated.toISOString(),
           })
           .eq("id", userId);
 
+        if (profileError) {
+          console.error("Update profile failed:", profileError.message);
+          throw new Error("Profile update failed");
+        }
+
         break;
       }
 
       case "customer.subscription.deleted": {
-        const subscription = stripeEvent.data.object;
-        const customerId = subscription.customer;
-
-        const customer = await stripe.customers.retrieve(customerId);
-        const userId = customer.metadata?.supabase_user_id;
-
-        if (!userId) throw new Error("No user ID found in customer metadata");
-
-        const currentPeriodEndTimestamp =
-          subscription.current_period_end * 1000;
-        if (isNaN(currentPeriodEndTimestamp)) {
-          throw new Error("Invalid current_period_end timestamp");
-        }
-
-        const updatedTimestamp =
-          (subscription.updated ?? subscription.created) * 1000;
-        if (isNaN(updatedTimestamp)) {
-          throw new Error("Invalid updated timestamp fallback");
-        }
-
-        const currentPeriodEnd = new Date(currentPeriodEndTimestamp);
-        const updated = new Date(updatedTimestamp);
-
-        await supabase
+        const { error: subError } = await supabase
           .from("subscriptions")
           .update({
             status: "canceled",
@@ -121,7 +100,12 @@ exports.handler = async (event) => {
           })
           .eq("id", subscription.id);
 
-        await supabase
+        if (subError) {
+          console.error("Update subscription failed:", subError.message);
+          throw new Error("Subscription cancel update failed");
+        }
+
+        const { error: profileError } = await supabase
           .from("profiles")
           .update({
             is_premium: false,
@@ -130,11 +114,16 @@ exports.handler = async (event) => {
           })
           .eq("id", userId);
 
+        if (profileError) {
+          console.error("Update profile failed:", profileError.message);
+          throw new Error("Profile downgrade failed");
+        }
+
         break;
       }
+
       default:
-        console.log(`Unhandled event type ${stripeEvent.type}`);
-        break;
+        console.log("Unhandled event type:", stripeEvent.type);
     }
 
     return {
