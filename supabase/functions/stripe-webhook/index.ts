@@ -1,4 +1,3 @@
-import express from "npm:express@4.18.2";
 import Stripe from "npm:stripe@14.18.0";
 import { createClient } from "npm:@supabase/supabase-js@2.39.3";
 
@@ -11,29 +10,36 @@ const supabase = createClient(
   Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") || ""
 );
 
-const app = express();
+const corsHeaders = {
+  "Access-Control-Allow-Origin": "*",
+  "Access-Control-Allow-Methods": "POST, OPTIONS",
+  "Access-Control-Allow-Headers": "Content-Type, Stripe-Signature",
+};
 
-// Parse raw body for Stripe webhook
-app.use((req, res, next) => {
-  let data = "";
-  req.on("data", (chunk) => {
-    data += chunk;
-  });
-  req.on("end", () => {
-    req.rawBody = data;
-    next();
-  });
-});
-
-app.post("/", async (req, res) => {
-  const sig = req.headers["stripe-signature"];
-  const endpointSecret = Deno.env.get("STRIPE_WEBHOOK_SECRET");
+Deno.serve(async (req) => {
+  // Handle CORS preflight requests
+  if (req.method === "OPTIONS") {
+    return new Response(null, {
+      status: 204,
+      headers: corsHeaders,
+    });
+  }
 
   try {
+    // Get the stripe signature from headers
+    const signature = req.headers.get("stripe-signature");
+    if (!signature) {
+      throw new Error("No stripe signature found");
+    }
+
+    // Get the raw body
+    const rawBody = await req.text();
+
+    // Verify webhook signature
     const event = stripe.webhooks.constructEvent(
-      req.rawBody,
-      sig,
-      endpointSecret
+      rawBody,
+      signature,
+      Deno.env.get("STRIPE_WEBHOOK_SECRET") || ""
     );
 
     // Handle the event
@@ -41,7 +47,7 @@ app.post("/", async (req, res) => {
       case "customer.subscription.created":
       case "customer.subscription.updated": {
         const subscription = event.data.object;
-        const customerId = subscription.customer;
+        const customerId = (subscription.customer as string);
         
         // Get customer to find user ID
         const customer = await stripe.customers.retrieve(customerId);
@@ -115,11 +121,17 @@ app.post("/", async (req, res) => {
       }
     }
 
-    res.json({ received: true });
+    return new Response(JSON.stringify({ received: true }), {
+      headers: { ...corsHeaders, "Content-Type": "application/json" },
+    });
   } catch (err) {
     console.error("Webhook error:", err.message);
-    res.status(400).send(`Webhook Error: ${err.message}`);
+    return new Response(
+      JSON.stringify({ error: err.message }), 
+      { 
+        status: 400,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      }
+    );
   }
 });
-
-app.listen(8000);
